@@ -6,6 +6,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -67,6 +68,15 @@ const App: React.FC = () => (
         options={{
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="📋" label="History" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="⚙️" label="Settings" focused={focused} />
           ),
         }}
       />

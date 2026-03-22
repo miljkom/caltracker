@@ -6,7 +6,8 @@
       "Bash(node:*)",
       "Bash(git init:*)",
       "WebFetch(domain:job-logs.eascdn.net)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

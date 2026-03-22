@@ -13,24 +13,27 @@ import { format } from 'date-fns';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
 import { getMealsForDay, getDailyTotals, deleteMeal } from '../services/mealStorage';
-import { DEFAULT_GOALS, NUTRIENT_COLORS } from '../services/nutritionGoals';
-import { MealEntry, DailyTotals } from '../types/nutrition';
+import { DEFAULT_GOALS, NUTRIENT_COLORS, loadGoals } from '../services/nutritionGoals';
+import { MealEntry, DailyTotals, DailyGoals } from '../types/nutrition';
 
 const DashboardScreen: React.FC = () => {
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [totals, setTotals] = useState<DailyTotals>({
     calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, meals: 0,
   });
+  const [goals, setGoals] = useState<DailyGoals>(DEFAULT_GOALS);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     const today = new Date();
-    const [dayMeals, dayTotals] = await Promise.all([
+    const [dayMeals, dayTotals, userGoals] = await Promise.all([
       getMealsForDay(today),
       getDailyTotals(today),
+      loadGoals(),
     ]);
     setMeals(dayMeals);
     setTotals(dayTotals);
+    setGoals(userGoals);
   };
 
   useFocusEffect(
@@ -63,7 +66,7 @@ const DashboardScreen: React.FC = () => {
     );
   };
 
-  const remaining = DEFAULT_GOALS.calories - totals.calories;
+  const remaining = goals.calories - totals.calories;
   const dateStr = format(new Date(), 'EEEE, MMM d');
 
   return (
@@ -91,7 +94,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.mainRingContainer}>
           <NutrientRing
             current={totals.calories}
-            goal={DEFAULT_GOALS.calories}
+            goal={goals.calories}
             size={180}
             strokeWidth={14}
             color={NUTRIENT_COLORS.calories}
@@ -103,7 +106,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.macroRings}>
           <NutrientRing
             current={totals.protein}
-            goal={DEFAULT_GOALS.protein}
+            goal={goals.protein}
             size={90}
             strokeWidth={7}
             color={NUTRIENT_COLORS.protein}
@@ -111,7 +114,7 @@ const DashboardScreen: React.FC = () => {
           />
           <NutrientRing
             current={totals.carbs}
-            goal={DEFAULT_GOALS.carbs}
+            goal={goals.carbs}
             size={90}
             strokeWidth={7}
             color={NUTRIENT_COLORS.carbs}
@@ -119,7 +122,7 @@ const DashboardScreen: React.FC = () => {
           />
           <NutrientRing
             current={totals.fat}
-            goal={DEFAULT_GOALS.fat}
+            goal={goals.fat}
             size={90}
             strokeWidth={7}
             color={NUTRIENT_COLORS.fat}
@@ -132,13 +135,13 @@ const DashboardScreen: React.FC = () => {
           <NutrientPill
             label="Fiber"
             current={totals.fiber}
-            goal={DEFAULT_GOALS.fiber}
+            goal={goals.fiber}
             color={NUTRIENT_COLORS.fiber}
           />
           <NutrientPill
             label="Sugar"
             current={totals.sugar}
-            goal={DEFAULT_GOALS.sugar}
+            goal={goals.sugar}
             color={NUTRIENT_COLORS.sugar}
           />
           <NutrientPill

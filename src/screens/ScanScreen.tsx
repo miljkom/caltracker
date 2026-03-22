@@ -22,6 +22,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
+  const [cameraReady, setCameraReady] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -47,21 +48,25 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleCapture = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || !cameraReady) {
+      Alert.alert('Error', 'Camera not ready. Please wait a moment and try again.');
+      return;
+    }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
-        base64: false,
       });
 
       if (photo?.uri) {
         await analyzePhoto(photo.uri);
+      } else {
+        Alert.alert('Error', 'Camera did not return a photo. Try using the gallery instead.');
       }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    } catch (err: any) {
+      Alert.alert('Camera Error', err?.message ?? 'Failed to take photo. Try using the gallery instead.');
     }
   };
 
@@ -143,6 +148,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
+        onCameraReady={() => setCameraReady(true)}
       >
         {/* Viewfinder overlay */}
         <View style={styles.viewfinder}>
@@ -172,7 +178,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.galleryIcon}>🖼️</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.captureBtn} onPress={handleCapture}>
+        <TouchableOpacity style={[styles.captureBtn, !cameraReady && { opacity: 0.4 }]} onPress={handleCapture}>
           <View style={styles.captureBtnInner} />
         </TouchableOpacity>
 
