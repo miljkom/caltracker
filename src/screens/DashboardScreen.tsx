@@ -106,7 +106,52 @@ const DashboardScreen: React.FC = () => {
     );
   };
 
+  const getSuggestions = (rem: { calories: number; protein: number; carbs: number; fat: number }): string[] => {
+    const suggestions: string[] = [];
+
+    if (rem.calories <= 0) return ['You\'ve hit your goal! 🎯'];
+
+    // High protein needed
+    if (rem.protein > 30) {
+      suggestions.push('🥚 Try eggs, Greek yogurt, or chicken breast for protein');
+    }
+
+    // High carbs remaining
+    if (rem.carbs > 60) {
+      suggestions.push('🍚 Rice, oats, or sweet potato would fit your carb target');
+    }
+
+    // Low calorie budget but need protein
+    if (rem.calories < 400 && rem.protein > 20) {
+      suggestions.push('🐟 Light option: grilled fish or a protein shake');
+    }
+
+    // Lots of calories remaining (haven't eaten much)
+    if (rem.calories > 1000) {
+      suggestions.push('🍽️ You have plenty of room — enjoy a balanced meal');
+    }
+
+    // Need fiber
+    if (rem.protein <= 30 && rem.carbs <= 60) {
+      suggestions.push('🥗 A light salad or fruit would round out your day');
+    }
+
+    // Low fat remaining
+    if (rem.fat < 10 && rem.calories > 200) {
+      suggestions.push('🥑 Go easy on fats — choose lean proteins and veggies');
+    }
+
+    return suggestions.slice(0, 2); // Max 2 suggestions
+  };
+
   const remaining = goals.calories - totals.calories;
+  const remainingMacros = {
+    calories: goals.calories - totals.calories,
+    protein: goals.protein - totals.protein,
+    carbs: goals.carbs - totals.carbs,
+    fat: goals.fat - totals.fat,
+  };
+  const suggestions = getSuggestions(remainingMacros);
   const getRemainingText = () => {
     if (totals.calories === 0) return 'Start logging your meals!';
     if (remaining > goals.calories * 0.5) return `${Math.round(remaining)} kcal remaining`;
@@ -235,6 +280,18 @@ const DashboardScreen: React.FC = () => {
                 </Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Meal suggestions */}
+        {totals.meals > 0 && suggestions.length > 0 && (
+          <View style={styles.suggestionsSection}>
+            <Text style={styles.sectionTitle}>Suggestions</Text>
+            {suggestions.map((s, i) => (
+              <View key={i} style={styles.suggestionCard}>
+                <Text style={styles.suggestionText}>{s}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -430,6 +487,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
   },
   tipText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  suggestionsSection: {
+    marginBottom: 16,
+  },
+  suggestionCard: {
+    backgroundColor: 'rgba(78,205,196,0.08)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(78,205,196,0.12)',
+  },
+  suggestionText: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: 13,
     fontWeight: '500',

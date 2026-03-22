@@ -340,6 +340,26 @@ export const reanalyzeItem = async (
 };
 
 // ============================================================
+// Text-only meal analysis (no photo)
+// ============================================================
+export const analyzeText = async (description: string): Promise<AnalysisResult> => {
+  const prompt = `${ANALYSIS_PROMPT}\n\nThe user described their meal as: "${description}"\n\nAnalyze this text description instead of a photo. Estimate portions based on typical serving sizes.`;
+
+  // Try Gemini first (any model works since it's text-only)
+  let text = await callGemini(
+    [{ parts: [{ text: prompt }] }],
+    4096,
+    GEMINI_VISION_MODELS
+  );
+
+  if (text === '@@GEMINI_EXHAUSTED@@') {
+    text = await callGroqText(prompt);
+  }
+
+  return parseResponse(text);
+};
+
+// ============================================================
 // Public API
 // ============================================================
 export const analyzeFood = async (photoUri: string): Promise<AnalysisResult> => {

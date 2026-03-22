@@ -14,7 +14,10 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { DailyGoals } from '../types/nutrition';
+import { getRecentMeals } from '../services/mealStorage';
 import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
 import { requestPermissions, scheduleReminders } from '../services/notifications';
 
@@ -35,6 +38,36 @@ const SettingsScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [lunchReminder, setLunchReminder] = useState(false);
   const [dinnerReminder, setDinnerReminder] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      const meals = await getRecentMeals(1000);
+      if (meals.length === 0) {
+        Alert.alert('No Data', 'No meals to export yet.');
+        return;
+      }
+
+      let csv = 'Date,Time,Meal Type,Items,Calories,Protein(g),Carbs(g),Fat(g),Fiber(g),Sugar(g),Notes\n';
+      for (const meal of meals) {
+        const date = new Date(meal.timestamp);
+        const dateStr = date.toISOString().split('T')[0];
+        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const items = meal.items.map((i: any) => i.name).join('; ');
+        csv += `${dateStr},${timeStr},${meal.mealType},"${items}",${Math.round(meal.totals.calories)},${Math.round(meal.totals.protein)},${Math.round(meal.totals.carbs)},${Math.round(meal.totals.fat)},${Math.round(meal.totals.fiber)},${Math.round(meal.totals.sugar)},"${meal.notes ?? ''}"\n`;
+      }
+
+      const file = new File(Paths.cache, 'calorie-tracker-export.csv');
+      file.create();
+      file.write(csv);
+
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Export Meal History',
+      });
+    } catch (e) {
+      Alert.alert('Export Failed', 'Could not export data. Please try again.');
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -182,6 +215,10 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.aboutLabel}>App Version</Text>
               <Text style={styles.aboutValue}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
             </View>
+            <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={handleExport}>
+              <Text style={styles.aboutLabel}>Export Data</Text>
+              <Text style={styles.aboutLink}>CSV →</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={() => Linking.openURL('https://github.com')}>
               <Text style={styles.aboutLabel}>Privacy Policy</Text>
               <Text style={styles.aboutLink}>View →</Text>

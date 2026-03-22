@@ -7,12 +7,14 @@ import {
   Alert,
   ScrollView,
   Linking,
+  TextInput,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import AnalysisOverlay from '../components/AnalysisOverlay';
-import { analyzeFood, reanalyzeItem } from '../services/foodAnalyzer';
+import { analyzeFood, reanalyzeItem, analyzeText } from '../services/foodAnalyzer';
+import { lookupBarcode } from '../services/barcodeService';
 import { saveMeal, addFavorite, getFavorites, useFavorite } from '../services/mealStorage';
 import { AnalysisResult } from '../types/nutrition';
 
@@ -31,6 +33,10 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [favorites, setFavorites] = useState<any[]>([]);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualText, setManualText] = useState('');
+  const [scanMode, setScanMode] = useState<'photo' | 'barcode'>('photo');
+  const [barcodeScanned, setBarcodeScanned] = useState(false);
 
   React.useEffect(() => {
     if (!photoUri) {
@@ -92,11 +98,35 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (barcodeScanned || isAnalyzing) return;
+    setBarcodeScanned(true);
+    setPhotoUri('barcode');
+    setIsAnalyzing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const barcodeResult = await lookupBarcode(data);
+      if (barcodeResult) {
+        setResult(barcodeResult);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        setError(`Product not found for barcode: ${data}. Try scanning the food with the camera instead.`);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch (err: any) {
+      setError(err?.message ?? 'Barcode lookup failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!result || !photoUri) return;
 
     try {
-      await saveMeal(photoUri, result.mealType, result.items, result.totals, notes || undefined);
+      await saveMeal(photoUri === 'manual' || photoUri === 'barcode' ? null : photoUri, result.mealType, result.items, result.totals, notes || undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Reset and navigate to dashboard
@@ -165,7 +195,58 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     setResult(null);
     setError(null);
     setNotes('');
+    setBarcodeScanned(false);
   };
+
+  // --- Manual entry view ---
+  if (showManualInput) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.permTitle}>Manual Entry</Text>
+        <Text style={styles.permText}>Describe your meal and we'll estimate the nutrition</Text>
+        <TextInput
+          style={styles.manualInput}
+          value={manualText}
+          onChangeText={setManualText}
+          placeholder="e.g. 2 eggs, toast with butter, orange juice"
+          placeholderTextColor="rgba(255,255,255,0.3)"
+          multiline
+          autoFocus
+        />
+        <TouchableOpacity
+          style={[styles.permBtn, !manualText.trim() && { opacity: 0.4 }]}
+          onPress={async () => {
+            if (!manualText.trim()) return;
+            setShowManualInput(false);
+            setPhotoUri('manual');
+            setIsAnalyzing(true);
+            setError(null);
+            setResult(null);
+            try {
+              const result = await analyzeText(manualText.trim());
+              setResult(result);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (err: any) {
+              setError(err?.message ?? 'Failed to analyze');
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            } finally {
+              setIsAnalyzing(false);
+              setManualText('');
+            }
+          }}
+          disabled={!manualText.trim()}
+        >
+          <Text style={styles.permBtnText}>Analyze</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.permBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginTop: 10 }]}
+          onPress={() => { setShowManualInput(false); setManualText(''); }}
+        >
+          <Text style={[styles.permBtnText, { color: 'rgba(255,255,255,0.6)' }]}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // --- Permission check ---
   if (!permission) {
@@ -225,6 +306,8 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.camera}
         facing="back"
         onCameraReady={() => setCameraReady(true)}
+        barcodeScannerSettings={scanMode === 'barcode' ? { barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39'] } : undefined}
+        onBarcodeScanned={scanMode === 'barcode' && !barcodeScanned ? handleBarcodeScanned : undefined}
       >
         {/* Viewfinder overlay */}
         <View style={styles.viewfinder}>
@@ -241,8 +324,22 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.viewfinderSide} />
           </View>
           <View style={styles.viewfinderBottom}>
+            <View style={styles.modeToggle}>
+              <TouchableOpacity
+                style={[styles.modeBtn, scanMode === 'photo' && styles.modeBtnActive]}
+                onPress={() => setScanMode('photo')}
+              >
+                <Text style={[styles.modeBtnText, scanMode === 'photo' && styles.modeBtnTextActive]}>📸 Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeBtn, scanMode === 'barcode' && styles.modeBtnActive]}
+                onPress={() => { setScanMode('barcode'); setBarcodeScanned(false); }}
+              >
+                <Text style={[styles.modeBtnText, scanMode === 'barcode' && styles.modeBtnTextActive]}>📊 Barcode</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.hint}>
-              Point camera at your food
+              {scanMode === 'photo' ? 'Point camera at your food' : 'Point camera at barcode'}
             </Text>
           </View>
         </View>
@@ -272,21 +369,34 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
       )}
 
       {/* Bottom controls */}
-      <View style={styles.controls}>
-        <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage}>
-          <Text style={styles.galleryIcon}>🖼️</Text>
-        </TouchableOpacity>
+      {scanMode === 'photo' && (
+        <View style={styles.controls}>
+          <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage}>
+            <Text style={styles.galleryIcon}>🖼️</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.captureBtn, (!cameraReady || isAnalyzing) && { opacity: 0.4 }]}
-          onPress={handleCapture}
-          disabled={!cameraReady || isAnalyzing}
-        >
-          <View style={styles.captureBtnInner} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.captureBtn, (!cameraReady || isAnalyzing) && { opacity: 0.4 }]}
+            onPress={handleCapture}
+            disabled={!cameraReady || isAnalyzing}
+          >
+            <View style={styles.captureBtnInner} />
+          </TouchableOpacity>
 
-        <View style={styles.galleryBtn} />
-      </View>
+          <TouchableOpacity style={styles.galleryBtn} onPress={() => setShowManualInput(true)}>
+            <Text style={styles.galleryIcon}>✏️</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {scanMode === 'barcode' && (
+        <View style={styles.controls}>
+          <View style={styles.galleryBtn} />
+          <View style={[styles.captureBtn, { borderColor: 'rgba(255,255,255,0.2)' }]}>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center' }}>Auto{'\n'}scan</Text>
+          </View>
+          <View style={styles.galleryBtn} />
+        </View>
+      )}
     </View>
   );
 };
@@ -332,6 +442,30 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 14,
     fontWeight: '500',
+  },
+  // Mode toggle
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 3,
+    marginBottom: 12,
+  },
+  modeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 17,
+  },
+  modeBtnActive: {
+    backgroundColor: '#FF6B35',
+  },
+  modeBtnText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modeBtnTextActive: {
+    color: '#FAFAFA',
   },
   // Corner markers
   corner: {
@@ -406,6 +540,19 @@ const styles = StyleSheet.create({
   },
   galleryIcon: {
     fontSize: 22,
+  },
+  manualInput: {
+    color: '#FAFAFA',
+    fontSize: 15,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    padding: 16,
+    width: '100%',
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   favoritesBar: {
     backgroundColor: '#0A0A0A',
