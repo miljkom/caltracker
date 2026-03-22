@@ -8,9 +8,10 @@ interface Props {
   meal: MealEntry;
   onPress?: () => void;
   onDelete?: () => void;
+  onEdit?: () => void;
 }
 
-const MealCard: React.FC<Props> = ({ meal, onPress, onDelete }) => {
+const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
   const timeStr = format(new Date(meal.timestamp), 'h:mm a');
   const icon = MEAL_TYPE_ICONS[meal.mealType] ?? '🍽️';
   const label = MEAL_TYPE_LABELS[meal.mealType] ?? 'Meal';
@@ -40,6 +41,10 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete }) => {
           {meal.items.map((i) => i.name).join(', ')}
         </Text>
 
+        {meal.notes && (
+          <Text style={styles.mealNotes}>{meal.notes}</Text>
+        )}
+
         {/* Macros row */}
         <View style={styles.macros}>
           <MacroPill label="Cal" value={meal.totals.calories} color="#FF6B35" />
@@ -48,6 +53,12 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete }) => {
           <MacroPill label="F" value={meal.totals.fat} color="#FF6B6B" unit="g" />
         </View>
       </View>
+
+      {onEdit && (
+        <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
+          <Text style={styles.editBtnText}>✎</Text>
+        </TouchableOpacity>
+      )}
 
       {onDelete && (
         <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
@@ -112,6 +123,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 10,
   },
+  mealNotes: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 8,
+  },
   macros: {
     flexDirection: 'row',
     gap: 8,
@@ -133,6 +150,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
     fontWeight: '600',
+  },
+  editBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 44,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editBtnText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
   },
   deleteBtn: {
     position: 'absolute',

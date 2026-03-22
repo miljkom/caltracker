@@ -5,13 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import AnalysisOverlay from '../components/AnalysisOverlay';
-import { analyzeFood } from '../services/foodAnalyzer';
-import { saveMeal } from '../services/mealStorage';
+import { analyzeFood, reanalyzeItem } from '../services/foodAnalyzer';
+import { saveMeal, addFavorite, getFavorites, useFavorite } from '../services/mealStorage';
 import { AnalysisResult } from '../types/nutrition';
 
 interface Props {
@@ -27,6 +28,12 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [favorites, setFavorites] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    getFavorites(5).then(setFavorites);
+  }, [photoUri]);
 
   const analyzePhoto = async (uri: string) => {
     setPhotoUri(uri);
@@ -85,22 +92,75 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     if (!result || !photoUri) return;
 
     try {
-      await saveMeal(photoUri, result.mealType, result.items, result.totals);
+      await saveMeal(photoUri, result.mealType, result.items, result.totals, notes || undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Reset and navigate to dashboard
       setPhotoUri(null);
       setResult(null);
+      setNotes('');
       navigation.navigate('Dashboard');
     } catch (err) {
       Alert.alert('Error', 'Failed to save meal. Please try again.');
     }
   };
 
+  const handleRemoveItem = (index: number) => {
+    if (!result) return;
+    const newItems = result.items.filter((_, i) => i !== index);
+    if (newItems.length === 0) {
+      Alert.alert('No Items', 'You removed all items. Retake the photo or add items back.', [
+        { text: 'Retake', onPress: handleRetake },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
+    }
+    const newTotals = {
+      calories: newItems.reduce((s, i) => s + i.calories, 0),
+      protein: newItems.reduce((s, i) => s + i.protein, 0),
+      carbs: newItems.reduce((s, i) => s + i.carbs, 0),
+      fat: newItems.reduce((s, i) => s + i.fat, 0),
+      fiber: newItems.reduce((s, i) => s + i.fiber, 0),
+      sugar: newItems.reduce((s, i) => s + i.sugar, 0),
+    };
+    setResult({ ...result, items: newItems, totals: newTotals });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleChangeMealType = (mealType: string) => {
+    if (!result) return;
+    setResult({ ...result, mealType: mealType as AnalysisResult['mealType'] });
+  };
+
+  const handleEditItem = async (index: number, newName: string, portion: string) => {
+    if (!result) return;
+    const updatedItem = await reanalyzeItem(newName, portion);
+    const newItems = [...result.items];
+    newItems[index] = updatedItem;
+    const newTotals = {
+      calories: newItems.reduce((s, i) => s + i.calories, 0),
+      protein: newItems.reduce((s, i) => s + i.protein, 0),
+      carbs: newItems.reduce((s, i) => s + i.carbs, 0),
+      fat: newItems.reduce((s, i) => s + i.fat, 0),
+      fiber: newItems.reduce((s, i) => s + i.fiber, 0),
+      sugar: newItems.reduce((s, i) => s + i.sugar, 0),
+    };
+    setResult({ ...result, items: newItems, totals: newTotals });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleSaveAsFavorite = async () => {
+    if (!result) return;
+    const name = result.items.map(i => i.name).join(', ');
+    await addFavorite(name, result.mealType, result.items, result.totals);
+    Alert.alert('Saved!', 'This meal has been added to your favorites.');
+  };
+
   const handleRetake = () => {
     setPhotoUri(null);
     setResult(null);
     setError(null);
+    setNotes('');
   };
 
   // --- Permission check ---
@@ -137,6 +197,12 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
         error={error}
         onSave={handleSave}
         onRetake={handleRetake}
+        onRemoveItem={handleRemoveItem}
+        onChangeMealType={handleChangeMealType}
+        onEditItem={handleEditItem}
+        onSaveAsFavorite={handleSaveAsFavorite}
+        notes={notes}
+        onChangeNotes={setNotes}
       />
     );
   }
@@ -171,6 +237,29 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       </CameraView>
+
+      {favorites.length > 0 && (
+        <View style={styles.favoritesBar}>
+          <Text style={styles.favoritesLabel}>Quick Add</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesScroll}>
+            {favorites.map((fav) => (
+              <TouchableOpacity
+                key={fav.id}
+                style={styles.favoriteChip}
+                onPress={async () => {
+                  await useFavorite(fav.id);
+                  await saveMeal(null, fav.mealType, fav.items, fav.totals);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  navigation.navigate('Dashboard');
+                }}
+              >
+                <Text style={styles.favoriteChipText} numberOfLines={1}>{fav.name}</Text>
+                <Text style={styles.favoriteChipCal}>{Math.round(fav.totals.calories)} kcal</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Bottom controls */}
       <View style={styles.controls}>
@@ -273,7 +362,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 28,
+    paddingTop: 28,
+    paddingBottom: 100,
     paddingHorizontal: 40,
     backgroundColor: '#0A0A0A',
   },
@@ -302,6 +392,45 @@ const styles = StyleSheet.create({
   },
   galleryIcon: {
     fontSize: 22,
+  },
+  favoritesBar: {
+    backgroundColor: '#0A0A0A',
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  favoritesLabel: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  favoritesScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  favoriteChip: {
+    backgroundColor: 'rgba(255,217,61,0.1)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,217,61,0.2)',
+    maxWidth: 160,
+  },
+  favoriteChipText: {
+    color: '#FAFAFA',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  favoriteChipCal: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    marginTop: 2,
   },
   // Permission screen
   centered: {

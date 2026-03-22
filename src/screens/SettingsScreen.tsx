@@ -9,10 +9,12 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { DailyGoals } from '../types/nutrition';
-import { DEFAULT_GOALS, loadGoals, saveGoals } from '../services/nutritionGoals';
+import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
+import { requestPermissions, scheduleReminders } from '../services/notifications';
 
 type GoalKey = keyof DailyGoals;
 
@@ -27,13 +29,19 @@ const GOAL_FIELDS: { key: GoalKey; label: string; unit: string }[] = [
 
 const SettingsScreen: React.FC = () => {
   const [goals, setGoals] = useState<DailyGoals>({ ...DEFAULT_GOALS });
+  const [waterGoal, setWaterGoal] = useState(DEFAULT_WATER_GOAL);
   const [saving, setSaving] = useState(false);
+  const [lunchReminder, setLunchReminder] = useState(false);
+  const [dinnerReminder, setDinnerReminder] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
-        const loaded = await loadGoals();
+        const [loaded, loadedWater, notifSettings] = await Promise.all([loadGoals(), loadWaterGoal(), loadNotificationSettings()]);
         setGoals(loaded);
+        setWaterGoal(loadedWater);
+        setLunchReminder(notifSettings.lunch);
+        setDinnerReminder(notifSettings.dinner);
       };
       load();
     }, [])
@@ -50,6 +58,7 @@ const SettingsScreen: React.FC = () => {
     setSaving(true);
     try {
       await saveGoals(goals);
+      await saveWaterGoal(waterGoal);
       Alert.alert('Saved', 'Your daily goals have been updated.');
     } catch (e) {
       Alert.alert('Error', 'Failed to save goals. Please try again.');
@@ -109,6 +118,60 @@ const SettingsScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Water Goal Section */}
+          <Text style={styles.sectionTitle}>Water Goal</Text>
+          <View style={styles.card}>
+            <View style={styles.goalRow}>
+              <Text style={styles.goalLabel}>
+                Daily Target <Text style={styles.goalUnit}>(ml)</Text>
+              </Text>
+              <TextInput
+                style={styles.goalInput}
+                value={waterGoal.toString()}
+                onChangeText={(t) => { const n = parseInt(t, 10); if (!isNaN(n)) setWaterGoal(n); }}
+                keyboardType="numeric"
+                selectTextOnFocus
+              />
+            </View>
+          </View>
+
+          {/* Reminders Section */}
+          <Text style={styles.sectionTitle}>Reminders</Text>
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={[styles.goalRow, styles.goalRowBorder]}
+              onPress={async () => {
+                const newVal = !lunchReminder;
+                setLunchReminder(newVal);
+                const settings = { lunch: newVal, dinner: dinnerReminder };
+                if (newVal || dinnerReminder) await requestPermissions();
+                await scheduleReminders(settings);
+                await saveNotificationSettings(settings);
+              }}
+            >
+              <Text style={styles.goalLabel}>Lunch Reminder <Text style={styles.goalUnit}>(12:30 PM)</Text></Text>
+              <Text style={[styles.toggleText, lunchReminder && styles.toggleActive]}>
+                {lunchReminder ? 'ON' : 'OFF'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.goalRow}
+              onPress={async () => {
+                const newVal = !dinnerReminder;
+                setDinnerReminder(newVal);
+                const settings = { lunch: lunchReminder, dinner: newVal };
+                if (lunchReminder || newVal) await requestPermissions();
+                await scheduleReminders(settings);
+                await saveNotificationSettings(settings);
+              }}
+            >
+              <Text style={styles.goalLabel}>Dinner Reminder <Text style={styles.goalUnit}>(7:00 PM)</Text></Text>
+              <Text style={[styles.toggleText, dinnerReminder && styles.toggleActive]}>
+                {dinnerReminder ? 'ON' : 'OFF'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* About Section */}
           <Text style={styles.sectionTitle}>About</Text>
           <View style={styles.card}>
@@ -116,10 +179,32 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.aboutLabel}>App Version</Text>
               <Text style={styles.aboutValue}>1.0.0</Text>
             </View>
-            <View style={styles.aboutRow}>
+            <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={() => Linking.openURL('https://github.com')}>
               <Text style={styles.aboutLabel}>Privacy Policy</Text>
-              <Text style={styles.aboutLink}>View</Text>
-            </View>
+              <Text style={styles.aboutLink}>View →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.aboutRow}
+              onPress={() => {
+                Alert.alert(
+                  'Redo Onboarding',
+                  'This will restart the setup wizard to recalculate your goals. Continue?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Redo',
+                      onPress: async () => {
+                        await resetOnboarding();
+                        Alert.alert('Done', 'Close and reopen the app to start onboarding.');
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.aboutLabel}>Redo Onboarding</Text>
+              <Text style={styles.aboutLink}>Reset →</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -228,6 +313,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 15,
     fontWeight: '500',
+  },
+  toggleText: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  toggleActive: {
+    color: '#FF6B35',
   },
   aboutLink: {
     color: '#FF6B35',

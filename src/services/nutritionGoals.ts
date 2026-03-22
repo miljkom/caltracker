@@ -62,6 +62,84 @@ export const MEAL_TYPE_LABELS: Record<string, string> = {
   snack: 'Snack',
 };
 
+export const DEFAULT_WATER_GOAL = 2000; // ml per day (8 cups)
+
+export const loadWaterGoal = async (): Promise<number> => {
+  try {
+    const db = await SQLite.openDatabaseAsync(DB_NAME);
+    await ensureSettingsTable(db);
+    const row = await db.getFirstAsync<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      ['water_goal']
+    );
+    if (row) return Number(row.value);
+  } catch {}
+  return DEFAULT_WATER_GOAL;
+};
+
+export const saveWaterGoal = async (goal: number): Promise<void> => {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await ensureSettingsTable(db);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    ['water_goal', String(goal)]
+  );
+};
+
+export const isOnboardingComplete = async (): Promise<boolean> => {
+  try {
+    const db = await SQLite.openDatabaseAsync(DB_NAME);
+    await ensureSettingsTable(db);
+    const row = await db.getFirstAsync<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      ['onboarding_complete']
+    );
+    return row?.value === 'true';
+  } catch {
+    return false;
+  }
+};
+
+export const setOnboardingComplete = async (): Promise<void> => {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await ensureSettingsTable(db);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    ['onboarding_complete', 'true']
+  );
+};
+
+export const resetOnboarding = async (): Promise<void> => {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await ensureSettingsTable(db);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    ['onboarding_complete', 'false']
+  );
+};
+
+export const loadNotificationSettings = async (): Promise<{ lunch: boolean; dinner: boolean }> => {
+  try {
+    const db = await SQLite.openDatabaseAsync(DB_NAME);
+    await ensureSettingsTable(db);
+    const row = await db.getFirstAsync<{ value: string }>(
+      'SELECT value FROM settings WHERE key = ?',
+      ['notification_settings']
+    );
+    if (row) return JSON.parse(row.value);
+  } catch {}
+  return { lunch: false, dinner: false };
+};
+
+export const saveNotificationSettings = async (settings: { lunch: boolean; dinner: boolean }): Promise<void> => {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await ensureSettingsTable(db);
+  await db.runAsync(
+    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    ['notification_settings', JSON.stringify(settings)]
+  );
+};
+
 export const NUTRIENT_COLORS: Record<string, string> = {
   calories: '#FF6B35',
   protein: '#4ECDC4',

@@ -20,6 +20,7 @@ export interface MealEntry {
   mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   items: FoodItem[];
   totals: NutrientInfo;
+  notes?: string;
 }
 
 export interface DailyTotals extends NutrientInfo {
