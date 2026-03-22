@@ -73,7 +73,7 @@ export const loadWaterGoal = async (): Promise<number> => {
       ['water_goal']
     );
     if (row) return Number(row.value);
-  } catch {}
+  } catch (e) { console.warn('Settings load failed:', e); }
   return DEFAULT_WATER_GOAL;
 };
 
@@ -95,7 +95,7 @@ export const isOnboardingComplete = async (): Promise<boolean> => {
       ['onboarding_complete']
     );
     return row?.value === 'true';
-  } catch {
+  } catch (e) { console.warn('Settings load failed:', e);
     return false;
   }
 };
@@ -127,7 +127,7 @@ export const loadNotificationSettings = async (): Promise<{ lunch: boolean; dinn
       ['notification_settings']
     );
     if (row) return JSON.parse(row.value);
-  } catch {}
+  } catch (e) { console.warn('Settings load failed:', e); }
   return { lunch: false, dinner: false };
 };
 

@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
@@ -96,6 +97,7 @@ const DashboardScreen: React.FC = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             await deleteMeal(meal.id);
             await loadData();
           },
@@ -245,10 +247,10 @@ const DashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.waterButtons}>
-            <TouchableOpacity style={styles.waterBtn} onPress={async () => { await logWater(250); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
               <Text style={styles.waterBtnText}>+250ml</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} onPress={async () => { await logWater(500); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
               <Text style={styles.waterBtnText}>+500ml</Text>
             </TouchableOpacity>
           </View>

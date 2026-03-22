@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -32,7 +33,9 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   const [favorites, setFavorites] = useState<any[]>([]);
 
   React.useEffect(() => {
-    getFavorites(5).then(setFavorites);
+    if (!photoUri) {
+      getFavorites(5).then(setFavorites);
+    }
   }, [photoUri]);
 
   const analyzePhoto = async (uri: string) => {
@@ -55,7 +58,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleCapture = async () => {
-    if (!cameraRef.current || !cameraReady) {
+    if (!cameraRef.current || !cameraReady || isAnalyzing) {
       Alert.alert('Error', 'Camera not ready. Please wait a moment and try again.');
       return;
     }
@@ -78,6 +81,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handlePickImage = async () => {
+    if (isAnalyzing) return;
     const pickerResult = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.7,
@@ -183,6 +187,12 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
           <Text style={styles.permBtnText}>Grant Permission</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.permBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginTop: 10 }]}
+          onPress={() => Linking.openURL('app-settings:')}
+        >
+          <Text style={[styles.permBtnText, { color: 'rgba(255,255,255,0.6)' }]}>Open Settings</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -267,7 +277,11 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.galleryIcon}>🖼️</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.captureBtn, !cameraReady && { opacity: 0.4 }]} onPress={handleCapture}>
+        <TouchableOpacity
+          style={[styles.captureBtn, (!cameraReady || isAnalyzing) && { opacity: 0.4 }]}
+          onPress={handleCapture}
+          disabled={!cameraReady || isAnalyzing}
+        >
           <View style={styles.captureBtnInner} />
         </TouchableOpacity>
 

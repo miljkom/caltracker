@@ -217,31 +217,42 @@ export const getRecentMeals = async (limit: number = 20): Promise<MealEntry[]> =
 export const getWeeklyTotals = async (): Promise<{ date: string; calories: number; protein: number; carbs: number; fat: number }[]> => {
   const database = await getDb();
   const now = new Date();
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const rows = await database.getAllAsync<{
+    day: string;
+    totals_json: string;
+  }>(
+    `SELECT DATE(timestamp / 1000, 'unixepoch', 'localtime') as day, totals_json
+     FROM meals WHERE timestamp >= ? ORDER BY timestamp`,
+    [sevenDaysAgo.getTime()]
+  );
+
+  // Aggregate by day
+  const dayMap = new Map<string, { calories: number; protein: number; carbs: number; fat: number }>();
+  for (const row of rows) {
+    const t = JSON.parse(row.totals_json);
+    const existing = dayMap.get(row.day) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    dayMap.set(row.day, {
+      calories: existing.calories + (t.calories || 0),
+      protein: existing.protein + (t.protein || 0),
+      carbs: existing.carbs + (t.carbs || 0),
+      fat: existing.fat + (t.fat || 0),
+    });
+  }
+
+  // Build 7-day array
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const results: { date: string; calories: number; protein: number; carbs: number; fat: number }[] = [];
 
   for (let i = 6; i >= 0; i--) {
     const day = new Date(now);
     day.setDate(day.getDate() - i);
-    day.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(day);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const rows = await database.getAllAsync<{ totals_json: string }>(
-      'SELECT totals_json FROM meals WHERE timestamp >= ? AND timestamp <= ?',
-      [day.getTime(), endOfDay.getTime()]
-    );
-
-    let calories = 0, protein = 0, carbs = 0, fat = 0;
-    for (const row of rows) {
-      const t = JSON.parse(row.totals_json);
-      calories += t.calories || 0;
-      protein += t.protein || 0;
-      carbs += t.carbs || 0;
-      fat += t.fat || 0;
-    }
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    results.push({ date: dayNames[day.getDay()], calories, protein, carbs, fat });
+    const key = day.toISOString().split('T')[0];
+    const data = dayMap.get(key) ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    results.push({ date: dayNames[day.getDay()], ...data });
   }
 
   return results;

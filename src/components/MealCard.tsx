@@ -24,7 +24,7 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
     >
       {/* Photo thumbnail */}
       {meal.photoUri && (
-        <Image source={{ uri: meal.photoUri }} style={styles.photo} />
+        <Image source={{ uri: meal.photoUri }} style={styles.photo} resizeMode="cover" />
       )}
 
       <View style={styles.content}>
@@ -55,13 +55,13 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
       </View>
 
       {onEdit && (
-        <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
+        <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.editBtnText}>✎</Text>
         </TouchableOpacity>
       )}
 
       {onDelete && (
-        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
+        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.deleteText}>✕</Text>
         </TouchableOpacity>
       )}
@@ -155,9 +155,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 44,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -170,9 +170,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',

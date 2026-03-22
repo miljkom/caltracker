@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  Alert,
 } from 'react-native';
 import { AnalysisResult, FoodItem } from '../types/nutrition';
 import { NUTRIENT_COLORS, MEAL_TYPE_ICONS, MEAL_TYPE_LABELS } from '../services/nutritionGoals';
@@ -63,14 +64,16 @@ const AnalysisOverlay: React.FC<Props> = ({
     setIsUpdating(true);
     try {
       await onEditItem(editingIdx, editName.trim(), editPortion.trim());
-    } catch {}
+    } catch (err: any) {
+      Alert.alert('Update Failed', err?.message ?? 'Could not update this item. Try again.');
+    }
     setIsUpdating(false);
     setEditingIdx(null);
   };
 
   return (
   <View style={styles.container}>
-    <Image source={{ uri: photoUri }} style={styles.preview} />
+    <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="cover" />
 
     <View style={styles.overlay}>
       {isAnalyzing && (

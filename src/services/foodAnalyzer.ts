@@ -135,11 +135,12 @@ const callGemini = async (
       throw new Error('No internet connection. Please check your network and try again.');
     }
 
-    if (response.status === 429 && i < models.length - 1) {
+    // Rate limited or auth error — try next model or fall back to another provider
+    if ((response.status === 429 || response.status === 403) && i < models.length - 1) {
       continue;
     }
 
-    if (response.status === 429) {
+    if (response.status === 429 || response.status === 403) {
       return '@@GEMINI_EXHAUSTED@@'; // Signal to try another provider
     }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -47,7 +47,11 @@ const App: React.FC = () => {
   }, []);
 
   if (showOnboarding === null) {
-    return <View style={{ flex: 1, backgroundColor: '#0A0A0A' }} />;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+      </View>
+    );
   }
 
   if (showOnboarding) {

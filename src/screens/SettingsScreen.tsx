@@ -12,6 +12,8 @@ import {
   Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
 import { DailyGoals } from '../types/nutrition';
 import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
 import { requestPermissions, scheduleReminders } from '../services/notifications';
@@ -59,6 +61,7 @@ const SettingsScreen: React.FC = () => {
     try {
       await saveGoals(goals);
       await saveWaterGoal(waterGoal);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Saved', 'Your daily goals have been updated.');
     } catch (e) {
       Alert.alert('Error', 'Failed to save goals. Please try again.');
@@ -177,7 +180,7 @@ const SettingsScreen: React.FC = () => {
           <View style={styles.card}>
             <View style={[styles.aboutRow, styles.goalRowBorder]}>
               <Text style={styles.aboutLabel}>App Version</Text>
-              <Text style={styles.aboutValue}>1.0.0</Text>
+              <Text style={styles.aboutValue}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
             </View>
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={() => Linking.openURL('https://github.com')}>
               <Text style={styles.aboutLabel}>Privacy Policy</Text>
