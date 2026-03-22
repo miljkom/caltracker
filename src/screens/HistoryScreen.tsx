@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   RefreshControl,
@@ -18,6 +19,7 @@ import { MealEntry, NutrientInfo, FoodItem } from '../types/nutrition';
 
 const HistoryScreen: React.FC = () => {
   const [meals, setMeals] = useState<MealEntry[]>([]);
+  const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{ date: string; calories: number; protein: number; carbs: number; fat: number }[]>([]);
   const [calorieGoal, setCalorieGoal] = useState(2000);
@@ -88,8 +90,16 @@ const HistoryScreen: React.FC = () => {
     ]);
   };
 
+  const filteredMeals = search.trim()
+    ? meals.filter(m =>
+        m.items.some(i => i.name.toLowerCase().includes(search.toLowerCase())) ||
+        m.mealType.toLowerCase().includes(search.toLowerCase()) ||
+        (m.notes?.toLowerCase().includes(search.toLowerCase()))
+      )
+    : meals;
+
   // Group meals by day
-  const grouped = groupByDay(meals);
+  const grouped = groupByDay(filteredMeals);
 
   // Chart dimensions
   const chartWidth = Dimensions.get('window').width - 72;
@@ -108,6 +118,15 @@ const HistoryScreen: React.FC = () => {
         }
       >
         <Text style={styles.title}>History</Text>
+
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search meals..."
+          placeholderTextColor="rgba(255,255,255,0.25)"
+          clearButtonMode="while-editing"
+        />
 
         {/* Weekly Overview */}
         {weeklyData.length > 0 && weeklyData.some(d => d.calories > 0) && (
@@ -181,7 +200,7 @@ const HistoryScreen: React.FC = () => {
           </View>
         )}
 
-        {meals.length === 0 ? (
+        {filteredMeals.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📋</Text>
             <Text style={styles.emptyText}>No meals logged yet</Text>
@@ -259,6 +278,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.5,
     marginBottom: 24,
+  },
+  searchInput: {
+    color: '#FAFAFA',
+    fontSize: 15,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   chartContainer: {
     backgroundColor: 'rgba(255,255,255,0.04)',

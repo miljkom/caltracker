@@ -23,7 +23,7 @@ const TabIcon: React.FC<{ icon: string; label: string; focused: boolean }> = ({
   label,
   focused,
 }) => (
-  <View style={styles.tabIconContainer}>
+  <View style={styles.tabIconContainer} accessibilityLabel={label} accessibilityRole="tab">
     <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
       {icon}
     </Text>
@@ -34,7 +34,7 @@ const TabIcon: React.FC<{ icon: string; label: string; focused: boolean }> = ({
 );
 
 const ScanTabButton: React.FC<{ focused: boolean }> = ({ focused }) => (
-  <View style={styles.scanTabContainer}>
+  <View style={styles.scanTabContainer} accessibilityLabel="Scan" accessibilityRole="tab">
     <View style={[styles.scanTabBtn, focused && styles.scanTabBtnFocused]}>
       <Text style={styles.scanTabIcon}>📸</Text>
     </View>

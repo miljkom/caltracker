@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
-import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay } from '../services/mealStorage';
+import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay, undoLastWater } from '../services/mealStorage';
 import { DEFAULT_GOALS, NUTRIENT_COLORS, loadGoals, loadWaterGoal, DEFAULT_WATER_GOAL } from '../services/nutritionGoals';
 import { MealEntry, DailyTotals, DailyGoals, NutrientInfo, FoodItem } from '../types/nutrition';
 import { getMealSuggestions, getRecipe } from '../services/mealSuggestions';
@@ -313,11 +313,16 @@ const DashboardScreen: React.FC = () => {
               {water} / {waterGoal} ml
             </Text>
           </View>
+          {water > 0 && (
+            <TouchableOpacity onPress={async () => { await undoLastWater(); await loadData(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Undo last water entry" accessibilityRole="button">
+              <Text style={styles.waterUndo}>Undo</Text>
+            </TouchableOpacity>
+          )}
           <View style={styles.waterButtons}>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }} accessibilityLabel="Add 250 milliliters of water" accessibilityRole="button">
               <Text style={styles.waterBtnText}>+250ml</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }} accessibilityLabel="Add 500 milliliters of water" accessibilityRole="button">
               <Text style={styles.waterBtnText}>+500ml</Text>
             </TouchableOpacity>
           </View>
@@ -483,6 +488,11 @@ const styles = StyleSheet.create({
     color: '#4ECDC4',
     fontSize: 13,
     fontWeight: '700',
+  },
+  waterUndo: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 11,
+    fontWeight: '600',
   },
   extraNutrients: {
     flexDirection: 'row',

@@ -328,12 +328,14 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
               <TouchableOpacity
                 style={[styles.modeBtn, scanMode === 'photo' && styles.modeBtnActive]}
                 onPress={() => setScanMode('photo')}
+                accessibilityLabel="Photo scan mode" accessibilityRole="button"
               >
                 <Text style={[styles.modeBtnText, scanMode === 'photo' && styles.modeBtnTextActive]}>📸 Photo</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modeBtn, scanMode === 'barcode' && styles.modeBtnActive]}
                 onPress={() => { setScanMode('barcode'); setBarcodeScanned(false); }}
+                accessibilityLabel="Barcode scan mode" accessibilityRole="button"
               >
                 <Text style={[styles.modeBtnText, scanMode === 'barcode' && styles.modeBtnTextActive]}>📊 Barcode</Text>
               </TouchableOpacity>
@@ -371,19 +373,20 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
       {/* Bottom controls */}
       {scanMode === 'photo' && (
         <View style={styles.controls}>
-          <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage}>
+          <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage} accessibilityLabel="Pick from gallery" accessibilityRole="button">
             <Text style={styles.galleryIcon}>🖼️</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.captureBtn, (!cameraReady || isAnalyzing) && { opacity: 0.4 }]}
             onPress={handleCapture}
+            accessibilityLabel="Take photo" accessibilityRole="button"
             disabled={!cameraReady || isAnalyzing}
           >
             <View style={styles.captureBtnInner} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.galleryBtn} onPress={() => setShowManualInput(true)}>
+          <TouchableOpacity style={styles.galleryBtn} onPress={() => setShowManualInput(true)} accessibilityLabel="Manual food entry" accessibilityRole="button">
             <Text style={styles.galleryIcon}>✏️</Text>
           </TouchableOpacity>
         </View>

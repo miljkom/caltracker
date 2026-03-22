@@ -14,13 +14,21 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
-import { File, Paths } from 'expo-file-system';
+import { File, Paths, Directory } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { DailyGoals } from '../types/nutrition';
-import { getRecentMeals } from '../services/mealStorage';
+import { getRecentMeals, getProfileStats, getLoggingStreak } from '../services/mealStorage';
 import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
 import { requestPermissions, scheduleReminders } from '../services/notifications';
 import { useTheme } from '../services/theme';
+
+const StatItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <View style={styles.statItem}>
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
 type GoalKey = keyof DailyGoals;
 
@@ -40,6 +48,8 @@ const SettingsScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [lunchReminder, setLunchReminder] = useState(false);
   const [dinnerReminder, setDinnerReminder] = useState(false);
+  const [profileStats, setProfileStats] = useState({ totalMeals: 0, totalCalories: 0, daysActive: 0, avgCalories: 0, memberSince: null as number | null });
+  const [streak, setStreak] = useState(0);
 
   const handleExport = async () => {
     try {
@@ -71,14 +81,71 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  const handleBackup = async () => {
+    try {
+      const dbPath = `${Paths.document.uri}/SQLite/calorie_tracker.db`;
+      const dbFile = new File(dbPath);
+      if (!dbFile.exists) {
+        Alert.alert('No Data', 'No database found to backup.');
+        return;
+      }
+      await Sharing.shareAsync(dbPath, {
+        mimeType: 'application/x-sqlite3',
+        dialogTitle: 'Backup Calorie Tracker Data',
+        UTI: 'public.database',
+      });
+    } catch (e) {
+      Alert.alert('Backup Failed', 'Could not create backup. Please try again.');
+    }
+  };
+
+  const handleRestore = async () => {
+    Alert.alert(
+      'Restore Data',
+      'This will replace ALL current data with the backup. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                copyToCacheDirectory: true,
+              });
+              if (result.canceled || !result.assets?.[0]) return;
+
+              const pickedFile = new File(result.assets[0].uri);
+              const dbDir = new Directory(Paths.document, 'SQLite');
+              if (!dbDir.exists) dbDir.create();
+              const destFile = new File(dbDir, 'calorie_tracker.db');
+
+              // Copy picked file to DB location
+              const buffer = await pickedFile.arrayBuffer();
+              destFile.create();
+              destFile.write(new Uint8Array(buffer));
+
+              Alert.alert('Restored', 'Data restored successfully. Please restart the app.');
+            } catch (e) {
+              Alert.alert('Restore Failed', 'Could not restore backup. Make sure you selected a valid backup file.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
-        const [loaded, loadedWater, notifSettings] = await Promise.all([loadGoals(), loadWaterGoal(), loadNotificationSettings()]);
+        const [loaded, loadedWater, notifSettings, stats, currentStreak] = await Promise.all([loadGoals(), loadWaterGoal(), loadNotificationSettings(), getProfileStats(), getLoggingStreak()]);
         setGoals(loaded);
         setWaterGoal(loadedWater);
         setLunchReminder(notifSettings.lunch);
         setDinnerReminder(notifSettings.dinner);
+        setProfileStats(stats);
+        setStreak(currentStreak);
       };
       load();
     }, [])
@@ -148,6 +215,7 @@ const SettingsScreen: React.FC = () => {
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
+            accessibilityLabel="Save settings" accessibilityRole="button"
             disabled={saving}
             activeOpacity={0.75}
           >
@@ -178,6 +246,7 @@ const SettingsScreen: React.FC = () => {
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             <TouchableOpacity
               style={[styles.goalRow, styles.goalRowBorder]}
+              accessibilityLabel="Toggle lunch reminder" accessibilityRole="button"
               onPress={async () => {
                 const newVal = !lunchReminder;
                 setLunchReminder(newVal);
@@ -194,6 +263,7 @@ const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.goalRow}
+              accessibilityLabel="Toggle dinner reminder" accessibilityRole="button"
               onPress={async () => {
                 const newVal = !dinnerReminder;
                 setDinnerReminder(newVal);
@@ -230,6 +300,19 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* Your Stats Section */}
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Your Stats</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.statsGrid}>
+              <StatItem label="Total Meals" value={profileStats.totalMeals.toString()} />
+              <StatItem label="Days Active" value={profileStats.daysActive.toString()} />
+              <StatItem label="Total Calories" value={profileStats.totalCalories.toLocaleString()} />
+              <StatItem label="Daily Average" value={`${profileStats.avgCalories} kcal`} />
+              <StatItem label="Current Streak" value={streak > 0 ? `${streak} days` : '\u2014'} />
+              <StatItem label="Member Since" value={profileStats.memberSince ? new Date(profileStats.memberSince).toLocaleDateString() : '\u2014'} />
+            </View>
+          </View>
+
           {/* About Section */}
           <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>About</Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
@@ -240,6 +323,14 @@ const SettingsScreen: React.FC = () => {
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={handleExport}>
               <Text style={[styles.aboutLabel, { color: theme.text }]}>Export Data</Text>
               <Text style={styles.aboutLink}>CSV →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={handleBackup} accessibilityLabel="Backup data" accessibilityRole="button">
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Backup Data</Text>
+              <Text style={styles.aboutLink}>Export →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={handleRestore} accessibilityLabel="Restore data" accessibilityRole="button">
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Restore Data</Text>
+              <Text style={styles.aboutLink}>Import →</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={() => Linking.openURL('https://github.com')}>
               <Text style={[styles.aboutLabel, { color: theme.text }]}>Privacy Policy</Text>
@@ -388,6 +479,28 @@ const styles = StyleSheet.create({
     color: '#FF6B35',
     fontSize: 15,
     fontWeight: '600',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    width: '50%',
+    padding: 14,
+    alignItems: 'center',
+  },
+  statValue: {
+    color: '#FF6B35',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 4,
   },
 });
 

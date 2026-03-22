@@ -90,7 +90,7 @@ const AnalysisOverlay: React.FC<Props> = ({
         <View style={styles.errorBox}>
           <Text style={styles.errorIcon}>⚠️</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retakeBtn} onPress={onRetake}>
+          <TouchableOpacity style={styles.retakeBtn} onPress={onRetake} accessibilityLabel="Retake photo" accessibilityRole="button">
             <Text style={styles.retakeBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -187,6 +187,7 @@ const AnalysisOverlay: React.FC<Props> = ({
                         style={styles.removeItemBtn}
                         onPress={() => onRemoveItem(idx)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityLabel="Remove food item" accessibilityRole="button"
                       >
                         <Text style={styles.removeItemText}>✕</Text>
                       </TouchableOpacity>
@@ -238,7 +239,7 @@ const AnalysisOverlay: React.FC<Props> = ({
 
           {/* Action buttons */}
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.saveBtn} onPress={onSave}>
+            <TouchableOpacity style={styles.saveBtn} onPress={onSave} accessibilityLabel="Log this meal" accessibilityRole="button">
               <Text style={styles.saveBtnText}>Log This Meal</Text>
             </TouchableOpacity>
             {onSaveAsFavorite && (
@@ -246,7 +247,7 @@ const AnalysisOverlay: React.FC<Props> = ({
                 <Text style={styles.favoriteBtnText}>⭐ Save as Favorite</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.retakeBtn} onPress={onRetake}>
+            <TouchableOpacity style={styles.retakeBtn} onPress={onRetake} accessibilityLabel="Retake photo" accessibilityRole="button">
               <Text style={styles.retakeBtnText}>Retake Photo</Text>
             </TouchableOpacity>
           </View>

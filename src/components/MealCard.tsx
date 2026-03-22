@@ -56,13 +56,13 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
         </View>
 
         {onEdit && (
-          <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Edit meal" accessibilityRole="button">
             <Text style={styles.editBtnText}>✎</Text>
           </TouchableOpacity>
         )}
 
         {onDelete && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Delete meal" accessibilityRole="button">
             <Text style={styles.deleteText}>✕</Text>
           </TouchableOpacity>
         )}

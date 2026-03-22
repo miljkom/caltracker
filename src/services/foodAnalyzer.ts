@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 import { AnalysisResult, FoodItem, NutrientInfo } from '../types/nutrition';
+import { cacheFoodItems, cacheFood } from './foodCache';
 
 // ============================================================
 // CONFIGURATION — API Keys (loaded from .env via app.json extra)
@@ -326,7 +327,7 @@ export const reanalyzeItem = async (
   const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   const item = JSON.parse(cleaned);
 
-  return {
+  const returnedItem: FoodItem = {
     name: String(item.name ?? foodName),
     portion: String(item.portion ?? portion),
     calories: Number(item.calories) || 0,
@@ -337,6 +338,8 @@ export const reanalyzeItem = async (
     sugar: Number(item.sugar) || 0,
     confidence: 0.95,
   };
+  cacheFood(returnedItem); // Fire and forget
+  return returnedItem;
 };
 
 // ============================================================
@@ -356,7 +359,9 @@ export const analyzeText = async (description: string): Promise<AnalysisResult> 
     text = await callGroqText(prompt);
   }
 
-  return parseResponse(text);
+  const result = parseResponse(text);
+  cacheFoodItems(result.items); // Fire and forget
+  return result;
 };
 
 // ============================================================
@@ -376,5 +381,7 @@ export const analyzeFood = async (photoUri: string): Promise<AnalysisResult> => 
   }
   const base64 = btoa(binary);
 
-  return analyzeWithVision(base64);
+  const result = await analyzeWithVision(base64);
+  cacheFoodItems(result.items); // Fire and forget
+  return result;
 };

@@ -319,6 +319,51 @@ export const logWater = async (amount: number): Promise<void> => {
   );
 };
 
+export const undoLastWater = async (): Promise<void> => {
+  const database = await getDb();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  await database.runAsync(
+    'DELETE FROM water_log WHERE id = (SELECT id FROM water_log WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT 1)',
+    [today.getTime()]
+  );
+};
+
+export const getProfileStats = async (): Promise<{
+  totalMeals: number;
+  totalCalories: number;
+  daysActive: number;
+  avgCalories: number;
+  memberSince: number | null;
+}> => {
+  const database = await getDb();
+
+  const countRow = await database.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM meals');
+  const totalMeals = countRow?.count ?? 0;
+
+  if (totalMeals === 0) {
+    return { totalMeals: 0, totalCalories: 0, daysActive: 0, avgCalories: 0, memberSince: null };
+  }
+
+  const rows = await database.getAllAsync<{ totals_json: string }>('SELECT totals_json FROM meals');
+  const totalCalories = rows.reduce((sum, r) => sum + (JSON.parse(r.totals_json).calories || 0), 0);
+
+  const daysRow = await database.getFirstAsync<{ days: number }>(
+    "SELECT COUNT(DISTINCT DATE(timestamp/1000, 'unixepoch', 'localtime')) as days FROM meals"
+  );
+  const daysActive = daysRow?.days ?? 0;
+
+  const firstRow = await database.getFirstAsync<{ first: number }>('SELECT MIN(timestamp) as first FROM meals');
+
+  return {
+    totalMeals,
+    totalCalories: Math.round(totalCalories),
+    daysActive,
+    avgCalories: daysActive > 0 ? Math.round(totalCalories / daysActive) : 0,
+    memberSince: firstRow?.first ?? null,
+  };
+};
+
 export const getWaterForDay = async (date: Date): Promise<number> => {
   const database = await getDb();
   const startOfDay = new Date(date);
