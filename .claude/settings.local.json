@@ -7,7 +7,12 @@
       "Bash(git init:*)",
       "WebFetch(domain:job-logs.eascdn.net)",
       "Bash(git add:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyBXuPors9WaHtq0mjPC3Fz9S6GfVkoyQEI\")",
+      "Bash(xargs wc:*)",
+      "Bash(npm ls:*)"
     ]
   }
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MealEntry } from '../types/nutrition';
 import { MEAL_TYPE_ICONS, MEAL_TYPE_LABELS } from '../services/nutritionGoals';
 import { format } from 'date-fns';
@@ -18,7 +17,7 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
   const label = MEAL_TYPE_LABELS[meal.mealType] ?? 'Meal';
 
   return (
-    <Animated.View entering={FadeInDown.duration(300).delay(0)}>
+    <View>
       <TouchableOpacity
         style={styles.card}
         onPress={onPress}
@@ -68,7 +67,7 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
           </TouchableOpacity>
         )}
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 };
 

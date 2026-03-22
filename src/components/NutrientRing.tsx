@@ -1,9 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import Animated, { useSharedValue, useAnimatedProps, withTiming, Easing } from 'react-native-reanimated';
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface Props {
   current: number;
@@ -26,21 +23,48 @@ const NutrientRing: React.FC<Props> = ({
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  const targetProgress = Math.min(current / goal, 1);
 
-  const isOver = current > goal;
-
-  const animatedProgress = useSharedValue(0);
+  // Simple JS-based animation — always animates from 0 on mount
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const animRef = useRef<ReturnType<typeof requestAnimationFrame>>();
+  const mountRef = useRef(0);
 
   useEffect(() => {
-    animatedProgress.value = withTiming(Math.min(current / goal, 1), {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-  }, [current, goal]);
+    // Reset to 0 and animate up every time targetProgress changes
+    mountRef.current++;
+    const thisMount = mountRef.current;
+    setDisplayProgress(0);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - animatedProgress.value),
-  }));
+    // Small delay so the reset to 0 renders first
+    const timeout = setTimeout(() => {
+      if (thisMount !== mountRef.current) return;
+      const duration = 600;
+      const startTime = Date.now();
+
+      const animate = () => {
+        if (thisMount !== mountRef.current) return;
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setDisplayProgress(targetProgress * eased);
+
+        if (t < 1) {
+          animRef.current = requestAnimationFrame(animate);
+        }
+      };
+
+      animRef.current = requestAnimationFrame(animate);
+    }, 50);
+
+    return () => {
+      clearTimeout(timeout);
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [targetProgress]);
+
+  const strokeDashoffset = circumference * (1 - displayProgress);
+  const isOver = current > goal;
 
   return (
     <View style={[styles.container, { width: size }]}>
@@ -55,7 +79,7 @@ const NutrientRing: React.FC<Props> = ({
           fill="none"
         />
         {/* Progress arc */}
-        <AnimatedCircle
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -63,7 +87,7 @@ const NutrientRing: React.FC<Props> = ({
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
-          animatedProps={animatedProps}
+          strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           rotation="-90"
           origin={`${size / 2}, ${size / 2}`}

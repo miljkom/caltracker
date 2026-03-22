@@ -7,16 +7,19 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  Animated,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, FadeInDown } from 'react-native-reanimated';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
 import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay } from '../services/mealStorage';
 import { DEFAULT_GOALS, NUTRIENT_COLORS, loadGoals, loadWaterGoal, DEFAULT_WATER_GOAL } from '../services/nutritionGoals';
 import { MealEntry, DailyTotals, DailyGoals, NutrientInfo, FoodItem } from '../types/nutrition';
+import { getMealSuggestions, getRecipe } from '../services/mealSuggestions';
 
 const DashboardScreen: React.FC = () => {
   const [meals, setMeals] = useState<MealEntry[]>([]);
@@ -28,11 +31,15 @@ const DashboardScreen: React.FC = () => {
   const [water, setWater] = useState(0);
   const [waterGoal, setWaterGoal] = useState(DEFAULT_WATER_GOAL);
   const [refreshing, setRefreshing] = useState(false);
+  const [renderKey, setRenderKey] = useState(0);
 
-  const waterScale = useSharedValue(1);
-  const waterAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: waterScale.value }],
-  }));
+  const waterScale = React.useRef(new Animated.Value(1)).current;
+  const bounceWater = () => {
+    Animated.sequence([
+      Animated.timing(waterScale, { toValue: 1.05, duration: 100, useNativeDriver: true }),
+      Animated.timing(waterScale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+  };
 
   const loadData = async () => {
     const today = new Date();
@@ -54,6 +61,7 @@ const DashboardScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
+      setRenderKey(k => k + 1);
       loadData();
     }, [])
   );
@@ -112,52 +120,37 @@ const DashboardScreen: React.FC = () => {
     );
   };
 
-  const getSuggestions = (rem: { calories: number; protein: number; carbs: number; fat: number }): string[] => {
-    const suggestions: string[] = [];
+  const [aiSuggestions, setAiSuggestions] = useState<{ mealType: string; name: string; description: string; approxCalories: number }[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [recipeModal, setRecipeModal] = useState<{ name: string; text: string } | null>(null);
+  const [loadingRecipe, setLoadingRecipe] = useState(false);
 
-    if (rem.calories <= 0) return ['You\'ve hit your goal! 🎯'];
-
-    // High protein needed
-    if (rem.protein > 30) {
-      suggestions.push('🥚 Try eggs, Greek yogurt, or chicken breast for protein');
+  const handleSuggestionTap = async (s: { name: string; approxCalories: number }) => {
+    setLoadingRecipe(true);
+    setRecipeModal({ name: s.name, text: '' });
+    try {
+      const recipe = await getRecipe(s.name, s.approxCalories);
+      setRecipeModal({ name: s.name, text: recipe });
+    } catch {
+      setRecipeModal({ name: s.name, text: 'Could not load recipe. Try again.' });
+    } finally {
+      setLoadingRecipe(false);
     }
-
-    // High carbs remaining
-    if (rem.carbs > 60) {
-      suggestions.push('🍚 Rice, oats, or sweet potato would fit your carb target');
-    }
-
-    // Low calorie budget but need protein
-    if (rem.calories < 400 && rem.protein > 20) {
-      suggestions.push('🐟 Light option: grilled fish or a protein shake');
-    }
-
-    // Lots of calories remaining (haven't eaten much)
-    if (rem.calories > 1000) {
-      suggestions.push('🍽️ You have plenty of room — enjoy a balanced meal');
-    }
-
-    // Need fiber
-    if (rem.protein <= 30 && rem.carbs <= 60) {
-      suggestions.push('🥗 A light salad or fruit would round out your day');
-    }
-
-    // Low fat remaining
-    if (rem.fat < 10 && rem.calories > 200) {
-      suggestions.push('🥑 Go easy on fats — choose lean proteins and veggies');
-    }
-
-    return suggestions.slice(0, 2); // Max 2 suggestions
   };
+
+  // Load AI suggestions after data loads (non-blocking)
+  React.useEffect(() => {
+    if (totals.meals > 0 && totals.calories < goals.calories) {
+      setLoadingSuggestions(true);
+      getMealSuggestions(totals, goals, meals)
+        .then(setAiSuggestions)
+        .finally(() => setLoadingSuggestions(false));
+    } else {
+      setAiSuggestions([]);
+    }
+  }, [totals.calories, totals.meals]);
 
   const remaining = goals.calories - totals.calories;
-  const remainingMacros = {
-    calories: goals.calories - totals.calories,
-    protein: goals.protein - totals.protein,
-    carbs: goals.carbs - totals.carbs,
-    fat: goals.fat - totals.fat,
-  };
-  const suggestions = getSuggestions(remainingMacros);
   const getRemainingText = () => {
     if (totals.calories === 0) return 'Start logging your meals!';
     if (remaining > goals.calories * 0.5) return `${Math.round(remaining)} kcal remaining`;
@@ -187,13 +180,13 @@ const DashboardScreen: React.FC = () => {
           {getRemainingText()}
         </Text>
         {streak >= 2 && (
-          <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.streakBadge}>
+          <View style={styles.streakBadge}>
             <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-          </Animated.View>
+          </View>
         )}
 
         {/* Main calorie ring */}
-        <View style={styles.mainRingContainer}>
+        <View key={`rings-${renderKey}`} style={styles.mainRingContainer}>
           <NutrientRing
             current={totals.calories}
             goal={goals.calories}
@@ -205,7 +198,7 @@ const DashboardScreen: React.FC = () => {
         </View>
 
         {/* Macro rings row */}
-        <View style={styles.macroRings}>
+        <View key={`macros-${renderKey}`} style={styles.macroRings}>
           <NutrientRing
             current={totals.protein}
             goal={goals.protein}
@@ -289,20 +282,31 @@ const DashboardScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Meal suggestions */}
-        {totals.meals > 0 && suggestions.length > 0 && (
+        {/* AI Meal suggestions */}
+        {totals.meals > 0 && (aiSuggestions.length > 0 || loadingSuggestions) && (
           <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>Suggestions</Text>
-            {suggestions.map((s, i) => (
-              <View key={i} style={styles.suggestionCard}>
-                <Text style={styles.suggestionText}>{s}</Text>
+            <Text style={styles.sectionTitle}>What to eat next</Text>
+            {loadingSuggestions && aiSuggestions.length === 0 ? (
+              <View style={styles.suggestionCard}>
+                <Text style={styles.suggestionText}>Thinking of meal ideas...</Text>
               </View>
-            ))}
+            ) : (
+              aiSuggestions.map((s, i) => (
+                <TouchableOpacity key={i} style={styles.suggestionCard} onPress={() => handleSuggestionTap(s)} activeOpacity={0.7}>
+                  <View style={styles.suggestionHeader}>
+                    <Text style={styles.suggestionName}>{s.name}</Text>
+                    <Text style={styles.suggestionCal}>~{s.approxCalories} kcal</Text>
+                  </View>
+                  <Text style={styles.suggestionDesc}>{s.description}</Text>
+                  <Text style={styles.suggestionTap}>Tap for recipe</Text>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         )}
 
         {/* Water tracking */}
-        <Animated.View style={[styles.waterSection, waterAnimatedStyle]}>
+        <Animated.View style={[styles.waterSection, { transform: [{ scale: waterScale }] }]}>
           <View style={styles.waterInfo}>
             <Text style={styles.waterIcon}>💧</Text>
             <Text style={styles.waterText}>
@@ -310,10 +314,10 @@ const DashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.waterButtons}>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { waterScale.value = withSequence(withTiming(1.05, { duration: 100 }), withTiming(1, { duration: 100 })); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
               <Text style={styles.waterBtnText}>+250ml</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { waterScale.value = withSequence(withTiming(1.05, { duration: 100 }), withTiming(1, { duration: 100 })); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
               <Text style={styles.waterBtnText}>+500ml</Text>
             </TouchableOpacity>
           </View>
@@ -344,6 +348,35 @@ const DashboardScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Recipe Modal */}
+      <Modal
+        visible={recipeModal !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setRecipeModal(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{recipeModal?.name}</Text>
+              <TouchableOpacity onPress={() => setRecipeModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            {loadingRecipe ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="large" color="#FF6B35" />
+                <Text style={styles.modalLoadingText}>Generating recipe...</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                <Text style={styles.recipeText}>{recipeModal?.text}</Text>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -504,16 +537,94 @@ const styles = StyleSheet.create({
   suggestionCard: {
     backgroundColor: 'rgba(78,205,196,0.08)',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 6,
+    padding: 14,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: 'rgba(78,205,196,0.12)',
   },
+  suggestionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  suggestionName: {
+    color: '#FAFAFA',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  suggestionCal: {
+    color: '#4ECDC4',
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  suggestionDesc: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  suggestionTap: {
+    color: '#4ECDC4',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 6,
+  },
   suggestionText: {
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 13,
     fontWeight: '500',
-    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  modalTitle: {
+    color: '#FAFAFA',
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+  },
+  modalClose: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 16,
+  },
+  modalLoading: {
+    padding: 60,
+    alignItems: 'center',
+  },
+  modalLoadingText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    marginTop: 16,
+  },
+  modalScroll: {
+    padding: 20,
+  },
+  recipeText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    lineHeight: 22,
   },
   mealsSection: {
     marginTop: 4,
