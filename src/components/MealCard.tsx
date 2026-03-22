@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { MealEntry } from '../types/nutrition';
 import { MEAL_TYPE_ICONS, MEAL_TYPE_LABELS } from '../services/nutritionGoals';
 import { format } from 'date-fns';
@@ -17,55 +18,57 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
   const label = MEAL_TYPE_LABELS[meal.mealType] ?? 'Meal';
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      {/* Photo thumbnail */}
-      {meal.photoUri && (
-        <Image source={{ uri: meal.photoUri }} style={styles.photo} resizeMode="cover" />
-      )}
-
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.mealType}>
-            {icon} {label}
-          </Text>
-          <Text style={styles.time}>{timeStr}</Text>
-        </View>
-
-        {/* Food items */}
-        <Text style={styles.items} numberOfLines={2}>
-          {meal.items.map((i) => i.name).join(', ')}
-        </Text>
-
-        {meal.notes && (
-          <Text style={styles.mealNotes}>{meal.notes}</Text>
+    <Animated.View entering={FadeInDown.duration(300).delay(0)}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        {/* Photo thumbnail */}
+        {meal.photoUri && (
+          <Image source={{ uri: meal.photoUri }} style={styles.photo} resizeMode="cover" />
         )}
 
-        {/* Macros row */}
-        <View style={styles.macros}>
-          <MacroPill label="Cal" value={meal.totals.calories} color="#FF6B35" />
-          <MacroPill label="P" value={meal.totals.protein} color="#4ECDC4" unit="g" />
-          <MacroPill label="C" value={meal.totals.carbs} color="#FFD93D" unit="g" />
-          <MacroPill label="F" value={meal.totals.fat} color="#FF6B6B" unit="g" />
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.mealType}>
+              {icon} {label}
+            </Text>
+            <Text style={styles.time}>{timeStr}</Text>
+          </View>
+
+          {/* Food items */}
+          <Text style={styles.items} numberOfLines={2}>
+            {meal.items.map((i) => i.name).join(', ')}
+          </Text>
+
+          {meal.notes && (
+            <Text style={styles.mealNotes}>{meal.notes}</Text>
+          )}
+
+          {/* Macros row */}
+          <View style={styles.macros}>
+            <MacroPill label="Cal" value={meal.totals.calories} color="#FF6B35" />
+            <MacroPill label="P" value={meal.totals.protein} color="#4ECDC4" unit="g" />
+            <MacroPill label="C" value={meal.totals.carbs} color="#FFD93D" unit="g" />
+            <MacroPill label="F" value={meal.totals.fat} color="#FF6B6B" unit="g" />
+          </View>
         </View>
-      </View>
 
-      {onEdit && (
-        <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.editBtnText}>✎</Text>
-        </TouchableOpacity>
-      )}
+        {onEdit && (
+          <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.editBtnText}>✎</Text>
+          </TouchableOpacity>
+        )}
 
-      {onDelete && (
-        <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.deleteText}>✕</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
+        {onDelete && (
+          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.deleteText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 

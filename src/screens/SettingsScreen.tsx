@@ -20,6 +20,7 @@ import { DailyGoals } from '../types/nutrition';
 import { getRecentMeals } from '../services/mealStorage';
 import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
 import { requestPermissions, scheduleReminders } from '../services/notifications';
+import { useTheme } from '../services/theme';
 
 type GoalKey = keyof DailyGoals;
 
@@ -33,6 +34,7 @@ const GOAL_FIELDS: { key: GoalKey; label: string; unit: string }[] = [
 ];
 
 const SettingsScreen: React.FC = () => {
+  const { theme, themeName, toggleTheme } = useTheme();
   const [goals, setGoals] = useState<DailyGoals>({ ...DEFAULT_GOALS });
   const [waterGoal, setWaterGoal] = useState(DEFAULT_WATER_GOAL);
   const [saving, setSaving] = useState(false);
@@ -104,7 +106,7 @@ const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -114,11 +116,11 @@ const SettingsScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Settings</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
 
           {/* Daily Goals Section */}
-          <Text style={styles.sectionTitle}>Daily Goals</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Daily Goals</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             {GOAL_FIELDS.map((field, index) => (
               <View
                 key={field.key}
@@ -127,17 +129,17 @@ const SettingsScreen: React.FC = () => {
                   index < GOAL_FIELDS.length - 1 && styles.goalRowBorder,
                 ]}
               >
-                <Text style={styles.goalLabel}>
+                <Text style={[styles.goalLabel, { color: theme.text }]}>
                   {field.label}{' '}
                   <Text style={styles.goalUnit}>({field.unit})</Text>
                 </Text>
                 <TextInput
-                  style={styles.goalInput}
+                  style={[styles.goalInput, { color: theme.text, backgroundColor: theme.inputBg }]}
                   value={goals[field.key].toString()}
                   onChangeText={(text) => updateGoal(field.key, text)}
                   keyboardType="numeric"
                   selectTextOnFocus
-                  placeholderTextColor="rgba(255,255,255,0.2)"
+                  placeholderTextColor={theme.textTertiary}
                 />
               </View>
             ))}
@@ -155,14 +157,14 @@ const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
 
           {/* Water Goal Section */}
-          <Text style={styles.sectionTitle}>Water Goal</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Water Goal</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             <View style={styles.goalRow}>
-              <Text style={styles.goalLabel}>
+              <Text style={[styles.goalLabel, { color: theme.text }]}>
                 Daily Target <Text style={styles.goalUnit}>(ml)</Text>
               </Text>
               <TextInput
-                style={styles.goalInput}
+                style={[styles.goalInput, { color: theme.text, backgroundColor: theme.inputBg }]}
                 value={waterGoal.toString()}
                 onChangeText={(t) => { const n = parseInt(t, 10); if (!isNaN(n)) setWaterGoal(n); }}
                 keyboardType="numeric"
@@ -172,8 +174,8 @@ const SettingsScreen: React.FC = () => {
           </View>
 
           {/* Reminders Section */}
-          <Text style={styles.sectionTitle}>Reminders</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Reminders</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             <TouchableOpacity
               style={[styles.goalRow, styles.goalRowBorder]}
               onPress={async () => {
@@ -185,7 +187,7 @@ const SettingsScreen: React.FC = () => {
                 await saveNotificationSettings(settings);
               }}
             >
-              <Text style={styles.goalLabel}>Lunch Reminder <Text style={styles.goalUnit}>(12:30 PM)</Text></Text>
+              <Text style={[styles.goalLabel, { color: theme.text }]}>Lunch Reminder <Text style={styles.goalUnit}>(12:30 PM)</Text></Text>
               <Text style={[styles.toggleText, lunchReminder && styles.toggleActive]}>
                 {lunchReminder ? 'ON' : 'OFF'}
               </Text>
@@ -201,26 +203,46 @@ const SettingsScreen: React.FC = () => {
                 await saveNotificationSettings(settings);
               }}
             >
-              <Text style={styles.goalLabel}>Dinner Reminder <Text style={styles.goalUnit}>(7:00 PM)</Text></Text>
+              <Text style={[styles.goalLabel, { color: theme.text }]}>Dinner Reminder <Text style={styles.goalUnit}>(7:00 PM)</Text></Text>
               <Text style={[styles.toggleText, dinnerReminder && styles.toggleActive]}>
                 {dinnerReminder ? 'ON' : 'OFF'}
               </Text>
             </TouchableOpacity>
           </View>
 
+          {/* Appearance Section */}
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Appearance</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <TouchableOpacity style={styles.goalRow} onPress={toggleTheme}>
+              <Text style={[styles.goalLabel, { color: theme.text }]}>Theme</Text>
+              <Text style={[styles.toggleText, { color: theme.accent }]}>
+                {themeName === 'dark' ? '🌙 Dark' : '☀️ Light'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Home Screen Widget Section */}
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Home Screen Widget</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Status</Text>
+              <Text style={styles.aboutValue}>Coming Soon</Text>
+            </View>
+          </View>
+
           {/* About Section */}
-          <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>About</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
             <View style={[styles.aboutRow, styles.goalRowBorder]}>
-              <Text style={styles.aboutLabel}>App Version</Text>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>App Version</Text>
               <Text style={styles.aboutValue}>{Constants.expoConfig?.version ?? '1.0.0'}</Text>
             </View>
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={handleExport}>
-              <Text style={styles.aboutLabel}>Export Data</Text>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Export Data</Text>
               <Text style={styles.aboutLink}>CSV →</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.aboutRow, styles.goalRowBorder]} onPress={() => Linking.openURL('https://github.com')}>
-              <Text style={styles.aboutLabel}>Privacy Policy</Text>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Privacy Policy</Text>
               <Text style={styles.aboutLink}>View →</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -242,7 +264,7 @@ const SettingsScreen: React.FC = () => {
                 );
               }}
             >
-              <Text style={styles.aboutLabel}>Redo Onboarding</Text>
+              <Text style={[styles.aboutLabel, { color: theme.text }]}>Redo Onboarding</Text>
               <Text style={styles.aboutLink}>Reset →</Text>
             </TouchableOpacity>
           </View>

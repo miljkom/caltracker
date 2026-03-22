@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
+import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, FadeInDown } from 'react-native-reanimated';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
 import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay } from '../services/mealStorage';
@@ -27,6 +28,11 @@ const DashboardScreen: React.FC = () => {
   const [water, setWater] = useState(0);
   const [waterGoal, setWaterGoal] = useState(DEFAULT_WATER_GOAL);
   const [refreshing, setRefreshing] = useState(false);
+
+  const waterScale = useSharedValue(1);
+  const waterAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: waterScale.value }],
+  }));
 
   const loadData = async () => {
     const today = new Date();
@@ -181,9 +187,9 @@ const DashboardScreen: React.FC = () => {
           {getRemainingText()}
         </Text>
         {streak >= 2 && (
-          <View style={styles.streakBadge}>
+          <Animated.View entering={FadeInDown.duration(400).delay(200)} style={styles.streakBadge}>
             <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Main calorie ring */}
@@ -296,7 +302,7 @@ const DashboardScreen: React.FC = () => {
         )}
 
         {/* Water tracking */}
-        <View style={styles.waterSection}>
+        <Animated.View style={[styles.waterSection, waterAnimatedStyle]}>
           <View style={styles.waterInfo}>
             <Text style={styles.waterIcon}>💧</Text>
             <Text style={styles.waterText}>
@@ -304,14 +310,14 @@ const DashboardScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.waterButtons}>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { waterScale.value = withSequence(withTiming(1.05, { duration: 100 }), withTiming(1, { duration: 100 })); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }}>
               <Text style={styles.waterBtnText}>+250ml</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
+            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { waterScale.value = withSequence(withTiming(1.05, { duration: 100 }), withTiming(1, { duration: 100 })); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }}>
               <Text style={styles.waterBtnText}>+500ml</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Meals list */}
         <View style={styles.mealsSection}>
