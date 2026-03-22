@@ -12,7 +12,23 @@
       "mcp__ide__getDiagnostics",
       "Bash(curl -s \"https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyBXuPors9WaHtq0mjPC3Fz9S6GfVkoyQEI\")",
       "Bash(xargs wc:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(sed -i \"s|import { File, Paths } from ''expo-file-system'';|import { File, Paths, Directory } from ''expo-file-system'';|\" src/screens/SettingsScreen.tsx)",
+      "Bash(sed -i \"/import \\\\* as Sharing from ''expo-sharing'';/a import * as DocumentPicker from ''expo-document-picker'';\" src/screens/SettingsScreen.tsx)",
+      "Bash(sed -i 's|<View style={styles.tabIconContainer}>|<View style={styles.tabIconContainer} accessibilityLabel={label} accessibilityRole=\"\"tab\"\">|' App.tsx)",
+      "Bash(sed -i 's|<View style={styles.scanTabContainer}>|<View style={styles.scanTabContainer} accessibilityLabel=\"\"Scan\"\" accessibilityRole=\"\"tab\"\">|' App.tsx)",
+      "Bash(sed -i \"s|<TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async \\(\\) => { bounceWater\\(\\); Haptics.impactAsync\\(Haptics.ImpactFeedbackStyle.Light\\); await logWater\\(250\\); await loadData\\(\\); }}>|<TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async \\(\\) => { bounceWater\\(\\); Haptics.impactAsync\\(Haptics.ImpactFeedbackStyle.Light\\); await logWater\\(250\\); await loadData\\(\\); }} accessibilityLabel=\"\"Add 250 milliliters of water\"\" accessibilityRole=\"\"button\"\">|\" src/screens/DashboardScreen.tsx)",
+      "Bash(sed -i \"s|<TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async \\(\\) => { bounceWater\\(\\); Haptics.impactAsync\\(Haptics.ImpactFeedbackStyle.Light\\); await logWater\\(500\\); await loadData\\(\\); }}>|<TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async \\(\\) => { bounceWater\\(\\); Haptics.impactAsync\\(Haptics.ImpactFeedbackStyle.Light\\); await logWater\\(500\\); await loadData\\(\\); }} accessibilityLabel=\"\"Add 500 milliliters of water\"\" accessibilityRole=\"\"button\"\">|\" src/screens/DashboardScreen.tsx)",
+      "Bash(cd:*)",
+      "Bash(sed -i 's|<TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage}>|<TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage} accessibilityLabel=\"\"Pick from gallery\"\" accessibilityRole=\"\"button\"\">|' src/screens/ScanScreen.tsx)",
+      "Bash(sed -i 's|onPress={handleCapture}$|onPress={handleCapture}\\\\n            accessibilityLabel=\"\"Take photo\"\" accessibilityRole=\"\"button\"\"|' src/screens/ScanScreen.tsx)",
+      "Bash(sed -i \"s|<TouchableOpacity style={styles.galleryBtn} onPress={\\(\\) => setShowManualInput\\(true\\)}>|<TouchableOpacity style={styles.galleryBtn} onPress={\\(\\) => setShowManualInput\\(true\\)} accessibilityLabel=\"\"Manual food entry\"\" accessibilityRole=\"\"button\"\">|\" src/screens/ScanScreen.tsx)",
+      "Bash(sed -i \"s|onPress={\\(\\) => setScanMode\\(''photo''\\)}|onPress={\\(\\) => setScanMode\\(''photo''\\)}\\\\n                accessibilityLabel=\"\"Photo scan mode\"\" accessibilityRole=\"\"button\"\"|\" src/screens/ScanScreen.tsx)",
+      "Bash(sed -i \"s|onPress={\\(\\) => { setScanMode\\(''barcode''\\); setBarcodeScanned\\(false\\); }}|onPress={\\(\\) => { setScanMode\\(''barcode''\\); setBarcodeScanned\\(false\\); }}\\\\n                accessibilityLabel=\"\"Barcode scan mode\"\" accessibilityRole=\"\"button\"\"|\" src/screens/ScanScreen.tsx)",
+      "Bash(sed -i 's|<TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>|<TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel=\"\"Edit meal\"\" accessibilityRole=\"\"button\"\">|' src/components/MealCard.tsx)",
+      "Bash(sed -i 's|<TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>|<TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel=\"\"Delete meal\"\" accessibilityRole=\"\"button\"\">|' src/components/MealCard.tsx)",
+      "Bash(sed -i 's|<TouchableOpacity style={styles.saveBtn} onPress={onSave}>|<TouchableOpacity style={styles.saveBtn} onPress={onSave} accessibilityLabel=\"\"Log this meal\"\" accessibilityRole=\"\"button\"\">|' src/components/AnalysisOverlay.tsx)",
+      "Bash(sed -i '/style={styles.retakeBtn} onPress={onRetake}/s|onPress={onRetake}>|onPress={onRetake} accessibilityLabel=\"\"Retake photo\"\" accessibilityRole=\"\"button\"\">|' src/components/AnalysisOverlay.tsx)"
     ]
   }
 }
