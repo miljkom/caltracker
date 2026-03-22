@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Calorie Tracker",
+    "slug": "calorie-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "calorietracker",
+    "splash": {
+      "backgroundColor": "#0A0A0A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.miljkom.calorietracker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "We need camera access to scan your food and estimate calories."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A"
+      },
+      "package": "com.miljkom.calorietracker",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Calorie Tracker to access your camera to scan food."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Calorie Tracker to access your photos to analyze food."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aa0f7f03-70c3-495d-98ed-f0492e971e6b"
+      }
+    },
+    "owner": "miljkom"
+  }
+}

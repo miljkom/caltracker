@@ -1,0 +1,338 @@
+import React, { useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
+import AnalysisOverlay from '../components/AnalysisOverlay';
+import { analyzeFood } from '../services/foodAnalyzer';
+import { saveMeal } from '../services/mealStorage';
+import { AnalysisResult } from '../types/nutrition';
+
+interface Props {
+  navigation: any;
+}
+
+const ScanScreen: React.FC<Props> = ({ navigation }) => {
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const analyzePhoto = async (uri: string) => {
+    setPhotoUri(uri);
+    setIsAnalyzing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const analysisResult = await analyzeFood(uri);
+      setResult(analysisResult);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      const message = err?.message ?? 'Failed to analyze photo';
+      setError(message);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleCapture = async () => {
+    if (!cameraRef.current) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.7,
+        base64: false,
+      });
+
+      if (photo?.uri) {
+        await analyzePhoto(photo.uri);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handlePickImage = async () => {
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+    });
+
+    if (!pickerResult.canceled && pickerResult.assets[0]?.uri) {
+      await analyzePhoto(pickerResult.assets[0].uri);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!result || !photoUri) return;
+
+    try {
+      await saveMeal(photoUri, result.mealType, result.items, result.totals);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Reset and navigate to dashboard
+      setPhotoUri(null);
+      setResult(null);
+      navigation.navigate('Dashboard');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save meal. Please try again.');
+    }
+  };
+
+  const handleRetake = () => {
+    setPhotoUri(null);
+    setResult(null);
+    setError(null);
+  };
+
+  // --- Permission check ---
+  if (!permission) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.permText}>Requesting camera permission...</Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.permIcon}>📷</Text>
+        <Text style={styles.permTitle}>Camera Access Needed</Text>
+        <Text style={styles.permText}>
+          We need your camera to scan food and estimate calories.
+        </Text>
+        <TouchableOpacity style={styles.permBtn} onPress={requestPermission}>
+          <Text style={styles.permBtnText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // --- Analysis result view ---
+  if (photoUri) {
+    return (
+      <AnalysisOverlay
+        photoUri={photoUri}
+        result={result}
+        isAnalyzing={isAnalyzing}
+        error={error}
+        onSave={handleSave}
+        onRetake={handleRetake}
+      />
+    );
+  }
+
+  // --- Camera view ---
+  return (
+    <View style={styles.cameraContainer}>
+      <CameraView
+        ref={cameraRef}
+        style={styles.camera}
+        facing="back"
+      >
+        {/* Viewfinder overlay */}
+        <View style={styles.viewfinder}>
+          <View style={styles.viewfinderTop} />
+          <View style={styles.viewfinderMiddle}>
+            <View style={styles.viewfinderSide} />
+            <View style={styles.viewfinderFrame}>
+              {/* Corner markers */}
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
+            </View>
+            <View style={styles.viewfinderSide} />
+          </View>
+          <View style={styles.viewfinderBottom}>
+            <Text style={styles.hint}>
+              Point camera at your food
+            </Text>
+          </View>
+        </View>
+      </CameraView>
+
+      {/* Bottom controls */}
+      <View style={styles.controls}>
+        <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage}>
+          <Text style={styles.galleryIcon}>🖼️</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.captureBtn} onPress={handleCapture}>
+          <View style={styles.captureBtnInner} />
+        </TouchableOpacity>
+
+        <View style={styles.galleryBtn} />
+      </View>
+    </View>
+  );
+};
+
+const CORNER_SIZE = 24;
+const CORNER_THICKNESS = 3;
+
+const styles = StyleSheet.create({
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  camera: {
+    flex: 1,
+  },
+  // Viewfinder
+  viewfinder: {
+    flex: 1,
+  },
+  viewfinderTop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  viewfinderMiddle: {
+    flexDirection: 'row',
+    height: 280,
+  },
+  viewfinderSide: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  viewfinderFrame: {
+    width: 280,
+    height: 280,
+  },
+  viewfinderBottom: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    paddingTop: 24,
+  },
+  hint: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Corner markers
+  corner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: CORNER_THICKNESS,
+    borderLeftWidth: CORNER_THICKNESS,
+    borderColor: '#FF6B35',
+    borderTopLeftRadius: 4,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: CORNER_THICKNESS,
+    borderRightWidth: CORNER_THICKNESS,
+    borderColor: '#FF6B35',
+    borderTopRightRadius: 4,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: CORNER_THICKNESS,
+    borderLeftWidth: CORNER_THICKNESS,
+    borderColor: '#FF6B35',
+    borderBottomLeftRadius: 4,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: CORNER_THICKNESS,
+    borderRightWidth: CORNER_THICKNESS,
+    borderColor: '#FF6B35',
+    borderBottomRightRadius: 4,
+  },
+  // Controls
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 40,
+    backgroundColor: '#0A0A0A',
+  },
+  captureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: '#FF6B35',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureBtnInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF6B35',
+  },
+  galleryBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryIcon: {
+    fontSize: 22,
+  },
+  // Permission screen
+  centered: {
+    flex: 1,
+    backgroundColor: '#0A0A0A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  permIcon: {
+    fontSize: 56,
+    marginBottom: 16,
+  },
+  permTitle: {
+    color: '#FAFAFA',
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  permText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  permBtn: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  permBtnText: {
+    color: '#FAFAFA',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
+
+export default ScanScreen;
