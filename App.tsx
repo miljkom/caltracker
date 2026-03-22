@@ -92,6 +92,7 @@ const App: React.FC = () => {
                 borderTopColor: themes[themeName].tabBorder,
               },
               tabBarShowLabel: false,
+              lazy: false,
             }}
           >
             <Tab.Screen

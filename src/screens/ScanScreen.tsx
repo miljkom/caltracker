@@ -16,6 +16,7 @@ import AnalysisOverlay from '../components/AnalysisOverlay';
 import { analyzeFood, reanalyzeItem, analyzeText } from '../services/foodAnalyzer';
 import { lookupBarcode } from '../services/barcodeService';
 import { saveMeal, addFavorite, getFavorites, useFavorite } from '../services/mealStorage';
+import { savePhoto } from '../services/photoStorage';
 import { AnalysisResult } from '../types/nutrition';
 
 interface Props {
@@ -126,7 +127,10 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     if (!result || !photoUri) return;
 
     try {
-      await saveMeal(photoUri === 'manual' || photoUri === 'barcode' ? null : photoUri, result.mealType, result.items, result.totals, notes || undefined);
+      const persistentUri = photoUri && photoUri !== 'manual' && photoUri !== 'barcode'
+        ? await savePhoto(photoUri)
+        : null;
+      await saveMeal(persistentUri, result.mealType, result.items, result.totals, notes || undefined);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Reset and navigate to dashboard

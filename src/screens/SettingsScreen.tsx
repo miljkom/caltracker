@@ -22,6 +22,7 @@ import { getRecentMeals, getProfileStats, getLoggingStreak } from '../services/m
 import { DEFAULT_GOALS, loadGoals, saveGoals, loadWaterGoal, saveWaterGoal, DEFAULT_WATER_GOAL, resetOnboarding, loadNotificationSettings, saveNotificationSettings } from '../services/nutritionGoals';
 import { requestPermissions, scheduleReminders } from '../services/notifications';
 import { useTheme } from '../services/theme';
+import { getAchievements, Achievement } from '../services/achievements';
 
 const StatItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={styles.statItem}>
@@ -50,6 +51,7 @@ const SettingsScreen: React.FC = () => {
   const [dinnerReminder, setDinnerReminder] = useState(false);
   const [profileStats, setProfileStats] = useState({ totalMeals: 0, totalCalories: 0, daysActive: 0, avgCalories: 0, memberSince: null as number | null });
   const [streak, setStreak] = useState(0);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   const handleExport = async () => {
     try {
@@ -139,13 +141,14 @@ const SettingsScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       const load = async () => {
-        const [loaded, loadedWater, notifSettings, stats, currentStreak] = await Promise.all([loadGoals(), loadWaterGoal(), loadNotificationSettings(), getProfileStats(), getLoggingStreak()]);
+        const [loaded, loadedWater, notifSettings, stats, currentStreak, achs] = await Promise.all([loadGoals(), loadWaterGoal(), loadNotificationSettings(), getProfileStats(), getLoggingStreak(), getAchievements()]);
         setGoals(loaded);
         setWaterGoal(loadedWater);
         setLunchReminder(notifSettings.lunch);
         setDinnerReminder(notifSettings.dinner);
         setProfileStats(stats);
         setStreak(currentStreak);
+        setAchievements(achs);
       };
       load();
     }, [])
@@ -310,6 +313,20 @@ const SettingsScreen: React.FC = () => {
               <StatItem label="Daily Average" value={`${profileStats.avgCalories} kcal`} />
               <StatItem label="Current Streak" value={streak > 0 ? `${streak} days` : '\u2014'} />
               <StatItem label="Member Since" value={profileStats.memberSince ? new Date(profileStats.memberSince).toLocaleDateString() : '\u2014'} />
+            </View>
+          </View>
+
+          {/* Achievements Section */}
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Achievements</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <View style={styles.achievementsGrid}>
+              {achievements.map((a) => (
+                <View key={a.id} style={[styles.achievementItem, !a.earned && styles.achievementLocked]}>
+                  <Text style={styles.achievementIcon}>{a.earned ? a.icon : '🔒'}</Text>
+                  <Text style={[styles.achievementName, !a.earned && styles.achievementNameLocked]}>{a.name}</Text>
+                  <Text style={styles.achievementDesc}>{a.description}</Text>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -501,6 +518,37 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 4,
+  },
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  achievementItem: {
+    width: '50%',
+    padding: 12,
+    alignItems: 'center',
+  },
+  achievementLocked: {
+    opacity: 0.35,
+  },
+  achievementIcon: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  achievementName: {
+    color: '#FAFAFA',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  achievementNameLocked: {
+    color: 'rgba(255,255,255,0.5)',
+  },
+  achievementDesc: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 2,
   },
 });
 

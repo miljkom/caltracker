@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { MealEntry } from '../types/nutrition';
 import { MEAL_TYPE_ICONS, MEAL_TYPE_LABELS } from '../services/nutritionGoals';
 import { format } from 'date-fns';
@@ -15,6 +15,15 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
   const timeStr = format(new Date(meal.timestamp), 'h:mm a');
   const icon = MEAL_TYPE_ICONS[meal.mealType] ?? '🍽️';
   const label = MEAL_TYPE_LABELS[meal.mealType] ?? 'Meal';
+
+  const handleShare = async () => {
+    const itemsList = meal.items.map(i => `• ${i.name} (${Math.round(i.calories)} kcal)`).join('\n');
+    const message = `${icon} ${label} — ${timeStr}\n\n${itemsList}\n\nTotal: ${Math.round(meal.totals.calories)} kcal | P: ${Math.round(meal.totals.protein)}g | C: ${Math.round(meal.totals.carbs)}g | F: ${Math.round(meal.totals.fat)}g\n\nTracked with Calorie Tracker`;
+
+    try {
+      await Share.share({ message });
+    } catch {}
+  };
 
   return (
     <View>
@@ -54,6 +63,10 @@ const MealCard: React.FC<Props> = ({ meal, onPress, onDelete, onEdit }) => {
             <MacroPill label="F" value={meal.totals.fat} color="#FF6B6B" unit="g" />
           </View>
         </View>
+
+        <TouchableOpacity style={styles.shareBtn} onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Share meal" accessibilityRole="button">
+          <Text style={styles.shareBtnText}>↗</Text>
+        </TouchableOpacity>
 
         {onEdit && (
           <TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Edit meal" accessibilityRole="button">
@@ -152,6 +165,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
     fontWeight: '600',
+  },
+  shareBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 78,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareBtnText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 16,
+    fontWeight: '700',
   },
   editBtn: {
     position: 'absolute',
