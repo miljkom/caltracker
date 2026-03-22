@@ -39,7 +39,9 @@
         {
           "photosPermission": "Allow Calorie Tracker to access your photos to analyze food."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {
