@@ -28,7 +28,20 @@
       "Bash(sed -i 's|<TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>|<TouchableOpacity style={styles.editBtn} onPress={onEdit} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel=\"\"Edit meal\"\" accessibilityRole=\"\"button\"\">|' src/components/MealCard.tsx)",
       "Bash(sed -i 's|<TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>|<TouchableOpacity style={styles.deleteBtn} onPress={onDelete} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel=\"\"Delete meal\"\" accessibilityRole=\"\"button\"\">|' src/components/MealCard.tsx)",
       "Bash(sed -i 's|<TouchableOpacity style={styles.saveBtn} onPress={onSave}>|<TouchableOpacity style={styles.saveBtn} onPress={onSave} accessibilityLabel=\"\"Log this meal\"\" accessibilityRole=\"\"button\"\">|' src/components/AnalysisOverlay.tsx)",
-      "Bash(sed -i '/style={styles.retakeBtn} onPress={onRetake}/s|onPress={onRetake}>|onPress={onRetake} accessibilityLabel=\"\"Retake photo\"\" accessibilityRole=\"\"button\"\">|' src/components/AnalysisOverlay.tsx)"
+      "Bash(sed -i '/style={styles.retakeBtn} onPress={onRetake}/s|onPress={onRetake}>|onPress={onRetake} accessibilityLabel=\"\"Retake photo\"\" accessibilityRole=\"\"button\"\">|' src/components/AnalysisOverlay.tsx)",
+      "Bash(xcodebuild -workspace CalorieTracker.xcworkspace -scheme CalorieTracker -destination 'generic/platform=iOS' -allowProvisioningUpdates)",
+      "Bash(xcrun simctl:*)",
+      "Bash(xcodebuild -workspace /Users/miljkomilosavljevic/Documents/GitHub/caltracker/ios/CalorieTracker.xcworkspace -scheme CalorieTracker -showBuildSettings)",
+      "Bash(security find-certificate:*)",
+      "Bash(openssl x509:*)",
+      "Bash(xcodebuild -workspace CalorieTracker.xcworkspace -scheme CalorieTracker -configuration Release -destination 'generic/platform=iOS' -allowProvisioningUpdates)",
+      "Bash(xcodebuild:*)",
+      "Bash(xcrun devicectl:*)",
+      "Bash(plutil:*)",
+      "Bash(sudo pkill:*)",
+      "Bash(softwareupdate --list)",
+      "Bash(pod install:*)",
+      "Bash(ls:*)"
     ]
   }
 }

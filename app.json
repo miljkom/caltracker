@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.miljkom.calorietracker",
+      "bundleIdentifier": "com.miljkom.caltracker",
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "We need camera access to scan your food and estimate calories.",
@@ -47,7 +47,8 @@
       ],
       "expo-asset",
       "expo-sqlite",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-document-picker"
     ],
     "extra": {
       "eas": {
