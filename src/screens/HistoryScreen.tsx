@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { format, isToday, isYesterday } from 'date-fns';
 import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
 import MealCard from '../components/MealCard';
+import EditMealModal from '../components/EditMealModal';
 import { getRecentMeals, deleteMeal, updateMeal, getWeeklyTotals } from '../services/mealStorage';
 import { loadGoals } from '../services/nutritionGoals';
 import { MealEntry, NutrientInfo, FoodItem } from '../types/nutrition';
@@ -23,6 +24,7 @@ const HistoryScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{ date: string; calories: number; protein: number; carbs: number; fat: number }[]>([]);
   const [calorieGoal, setCalorieGoal] = useState(2000);
+  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
 
   const loadData = async () => {
     const [recent, weekly, goals] = await Promise.all([
@@ -48,32 +50,12 @@ const HistoryScreen: React.FC = () => {
   };
 
   const handleEditMeal = (meal: MealEntry) => {
-    if (meal.items.length <= 1) {
-      Alert.alert('Edit Meal', 'This meal has only one item. You can delete the whole meal instead.');
-      return;
-    }
+    setEditingMeal(meal);
+  };
 
-    const buttons = meal.items.map((item, idx) => ({
-      text: `Remove: ${item.name} (${Math.round(item.calories)} kcal)`,
-      style: 'destructive' as const,
-      onPress: async () => {
-        const newItems = meal.items.filter((_, i) => i !== idx);
-        const newTotals: NutrientInfo = {
-          calories: newItems.reduce((s, i) => s + i.calories, 0),
-          protein: newItems.reduce((s, i) => s + i.protein, 0),
-          carbs: newItems.reduce((s, i) => s + i.carbs, 0),
-          fat: newItems.reduce((s, i) => s + i.fat, 0),
-          fiber: newItems.reduce((s, i) => s + i.fiber, 0),
-          sugar: newItems.reduce((s, i) => s + i.sugar, 0),
-        };
-        await updateMeal(meal.id, newItems, newTotals);
-        await loadData();
-      },
-    }));
-
-    buttons.push({ text: 'Cancel', style: 'cancel' as const, onPress: () => {} });
-
-    Alert.alert('Edit Meal', 'Select an item to remove:', buttons);
+  const handleSaveEditedMeal = async (mealId: string, items: FoodItem[], totals: NutrientInfo) => {
+    await updateMeal(mealId, items, totals);
+    await loadData();
   };
 
   const handleDelete = (meal: MealEntry) => {
@@ -229,6 +211,15 @@ const HistoryScreen: React.FC = () => {
           ))
         )}
       </ScrollView>
+
+      {editingMeal && (
+        <EditMealModal
+          visible={!!editingMeal}
+          meal={editingMeal}
+          onClose={() => setEditingMeal(null)}
+          onSave={handleSaveEditedMeal}
+        />
+      )}
     </View>
   );
 };

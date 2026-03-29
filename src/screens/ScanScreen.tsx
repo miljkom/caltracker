@@ -187,6 +187,22 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const handleAddItem = async (name: string, portion: string) => {
+    if (!result) return;
+    const newItem = await reanalyzeItem(name, portion);
+    const newItems = [...result.items, newItem];
+    const newTotals = {
+      calories: newItems.reduce((s, i) => s + i.calories, 0),
+      protein: newItems.reduce((s, i) => s + i.protein, 0),
+      carbs: newItems.reduce((s, i) => s + i.carbs, 0),
+      fat: newItems.reduce((s, i) => s + i.fat, 0),
+      fiber: newItems.reduce((s, i) => s + i.fiber, 0),
+      sugar: newItems.reduce((s, i) => s + i.sugar, 0),
+    };
+    setResult({ ...result, items: newItems, totals: newTotals });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleSaveAsFavorite = async () => {
     if (!result) return;
     const name = result.items.map(i => i.name).join(', ');
@@ -296,6 +312,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
         onChangeMealType={handleChangeMealType}
         onEditItem={handleEditItem}
         onSaveAsFavorite={handleSaveAsFavorite}
+        onAddItem={handleAddItem}
         notes={notes}
         onChangeNotes={setNotes}
       />

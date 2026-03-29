@@ -24,6 +24,7 @@ interface Props {
   onChangeMealType?: (type: string) => void;
   onEditItem?: (index: number, newName: string, portion: string) => Promise<void>;
   onSaveAsFavorite?: () => void;
+  onAddItem?: (name: string, portion: string) => Promise<void>;
   notes?: string;
   onChangeNotes?: (notes: string) => void;
 }
@@ -39,6 +40,7 @@ const AnalysisOverlay: React.FC<Props> = ({
   onChangeMealType,
   onEditItem,
   onSaveAsFavorite,
+  onAddItem,
   notes,
   onChangeNotes,
 }) => {
@@ -46,6 +48,10 @@ const AnalysisOverlay: React.FC<Props> = ({
   const [editName, setEditName] = useState('');
   const [editPortion, setEditPortion] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [addMode, setAddMode] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addPortion, setAddPortion] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
 
   const startEdit = (idx: number, item: FoodItem) => {
     setEditingIdx(idx);
@@ -69,6 +75,20 @@ const AnalysisOverlay: React.FC<Props> = ({
     }
     setIsUpdating(false);
     setEditingIdx(null);
+  };
+
+  const submitAdd = async () => {
+    if (!onAddItem || !addName.trim()) return;
+    setIsAdding(true);
+    try {
+      await onAddItem(addName.trim(), addPortion.trim() || '1 serving');
+      setAddMode(false);
+      setAddName('');
+      setAddPortion('');
+    } catch (err: any) {
+      Alert.alert('Add Failed', err?.message ?? 'Could not analyze this food item.');
+    }
+    setIsAdding(false);
   };
 
   return (
@@ -214,6 +234,47 @@ const AnalysisOverlay: React.FC<Props> = ({
               )}
             </View>
           ))}
+
+          {/* Add ingredient */}
+          {onAddItem && (
+            addMode ? (
+              <View style={styles.addCard}>
+                <Text style={styles.editLabel}>Food name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={addName}
+                  onChangeText={setAddName}
+                  placeholder="e.g. Brown Rice"
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                  autoFocus
+                />
+                <Text style={styles.editLabel}>Portion (optional)</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={addPortion}
+                  onChangeText={setAddPortion}
+                  placeholder="e.g. 1 cup, 150g"
+                  placeholderTextColor="rgba(255,255,255,0.2)"
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.editSubmitBtn}
+                    onPress={submitAdd}
+                    disabled={isAdding || !addName.trim()}
+                  >
+                    <Text style={styles.editSubmitText}>{isAdding ? 'Adding...' : 'Add'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.editCancelBtn} onPress={() => { setAddMode(false); setAddName(''); setAddPortion(''); }}>
+                    <Text style={styles.editCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.addIngredientBtn} onPress={() => { setAddMode(true); setEditingIdx(null); }}>
+                <Text style={styles.addIngredientText}>+ Add Ingredient</Text>
+              </TouchableOpacity>
+            )
+          )}
 
           {result.items.some(item => item.confidence < 0.6) && (
             <View style={styles.confidenceBanner}>
@@ -595,6 +656,30 @@ const styles = StyleSheet.create({
   retakeBtnText: {
     color: 'rgba(255,255,255,0.6)',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  addCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.2)',
+  },
+  addIngredientBtn: {
+    marginTop: 4,
+    marginBottom: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.3)',
+    borderStyle: 'dashed',
+  },
+  addIngredientText: {
+    color: '#FF6B35',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

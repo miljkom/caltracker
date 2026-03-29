@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
+import EditMealModal from '../components/EditMealModal';
 import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay, undoLastWater } from '../services/mealStorage';
 import { DEFAULT_GOALS, NUTRIENT_COLORS, loadGoals, loadWaterGoal, DEFAULT_WATER_GOAL } from '../services/nutritionGoals';
 import { MealEntry, DailyTotals, DailyGoals, NutrientInfo, FoodItem } from '../types/nutrition';
@@ -32,6 +33,7 @@ const DashboardScreen: React.FC = () => {
   const [waterGoal, setWaterGoal] = useState(DEFAULT_WATER_GOAL);
   const [refreshing, setRefreshing] = useState(false);
   const [renderKey, setRenderKey] = useState(0);
+  const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
 
   const waterScale = React.useRef(new Animated.Value(1)).current;
   const bounceWater = () => {
@@ -73,32 +75,12 @@ const DashboardScreen: React.FC = () => {
   };
 
   const handleEditMeal = (meal: MealEntry) => {
-    if (meal.items.length <= 1) {
-      Alert.alert('Edit Meal', 'This meal has only one item. You can delete the whole meal instead.');
-      return;
-    }
+    setEditingMeal(meal);
+  };
 
-    const buttons = meal.items.map((item, idx) => ({
-      text: `Remove: ${item.name} (${Math.round(item.calories)} kcal)`,
-      style: 'destructive' as const,
-      onPress: async () => {
-        const newItems = meal.items.filter((_, i) => i !== idx);
-        const newTotals: NutrientInfo = {
-          calories: newItems.reduce((s, i) => s + i.calories, 0),
-          protein: newItems.reduce((s, i) => s + i.protein, 0),
-          carbs: newItems.reduce((s, i) => s + i.carbs, 0),
-          fat: newItems.reduce((s, i) => s + i.fat, 0),
-          fiber: newItems.reduce((s, i) => s + i.fiber, 0),
-          sugar: newItems.reduce((s, i) => s + i.sugar, 0),
-        };
-        await updateMeal(meal.id, newItems, newTotals);
-        await loadData();
-      },
-    }));
-
-    buttons.push({ text: 'Cancel', style: 'cancel' as const, onPress: () => {} });
-
-    Alert.alert('Edit Meal', 'Select an item to remove:', buttons);
+  const handleSaveEditedMeal = async (mealId: string, items: FoodItem[], totals: NutrientInfo) => {
+    await updateMeal(mealId, items, totals);
+    await loadData();
   };
 
   const handleDeleteMeal = (meal: MealEntry) => {
@@ -382,6 +364,15 @@ const DashboardScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {editingMeal && (
+        <EditMealModal
+          visible={!!editingMeal}
+          meal={editingMeal}
+          onClose={() => setEditingMeal(null)}
+          onSave={handleSaveEditedMeal}
+        />
+      )}
     </View>
   );
 };
