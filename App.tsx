@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
@@ -11,7 +11,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { isOnboardingComplete, setOnboardingComplete } from './src/services/nutritionGoals';
-import { ThemeContext, themes, loadTheme, saveTheme, ThemeName } from './src/services/theme';
+import { ThemeContext, themes, loadTheme, saveTheme, ThemeName, useTheme } from './src/services/theme';
 
 // Keep splash screen visible while we load
 SplashScreen.preventAutoHideAsync();
@@ -22,27 +22,51 @@ const TabIcon: React.FC<{ icon: string; label: string; focused: boolean }> = ({
   icon,
   label,
   focused,
-}) => (
-  <View style={styles.tabIconContainer} accessibilityLabel={label} accessibilityRole="tab">
-    <Text style={[styles.tabIcon, focused && styles.tabIconFocused]}>
-      {icon}
-    </Text>
-    <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]} numberOfLines={1}>
-      {label}
-    </Text>
-  </View>
-);
+}) => {
+  const { theme } = useTheme();
+  const scale = useRef(new Animated.Value(focused ? 1 : 0.85)).current;
+  const opacity = useRef(new Animated.Value(focused ? 1 : 0.4)).current;
 
-const ScanTabButton: React.FC<{ focused: boolean }> = ({ focused }) => (
-  <View style={styles.scanTabContainer} accessibilityLabel="Scan" accessibilityRole="tab">
-    <View style={[styles.scanTabBtn, focused && styles.scanTabBtnFocused]}>
-      <Text style={styles.scanTabIcon}>📸</Text>
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale, { toValue: focused ? 1 : 0.85, useNativeDriver: true, friction: 6 }),
+      Animated.timing(opacity, { toValue: focused ? 1 : 0.4, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [focused]);
+
+  return (
+    <Animated.View
+      style={[styles.tabIconContainer, { transform: [{ scale }], opacity }]}
+      accessibilityLabel={label}
+      accessibilityRole="tab"
+    >
+      <Text style={styles.tabIcon}>{icon}</Text>
+      <Text style={[styles.tabLabel, { color: theme.textTertiary }, focused && styles.tabLabelFocused]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Animated.View>
+  );
+};
+
+const ScanTabButton: React.FC<{ focused: boolean }> = ({ focused }) => {
+  const { theme } = useTheme();
+  const scale = useRef(new Animated.Value(focused ? 1.08 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(scale, { toValue: focused ? 1.08 : 1, useNativeDriver: true, friction: 5 }).start();
+  }, [focused]);
+
+  return (
+    <View style={styles.scanTabContainer} accessibilityLabel="Scan" accessibilityRole="tab">
+      <Animated.View style={[styles.scanTabBtn, focused && styles.scanTabBtnFocused, { transform: [{ scale }] }]}>
+        <Text style={styles.scanTabIcon}>📸</Text>
+      </Animated.View>
+      <Text style={[styles.tabLabel, { color: theme.textTertiary }, focused && styles.tabLabelFocused, { marginTop: 4 }]}>
+        Scan
+      </Text>
     </View>
-    <Text style={[styles.tabLabel, focused && styles.tabLabelFocused, { marginTop: 4 }]}>
-      Scan
-    </Text>
-  </View>
-);
+  );
+};
 
 const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -153,10 +177,6 @@ const styles = StyleSheet.create({
   },
   tabIcon: {
     fontSize: 20,
-    opacity: 0.4,
-  },
-  tabIconFocused: {
-    opacity: 1,
   },
   tabLabel: {
     fontSize: 9,

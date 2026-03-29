@@ -15,6 +15,7 @@ import {
 import { MealEntry, FoodItem, NutrientInfo } from '../types/nutrition';
 import { NUTRIENT_COLORS, MEAL_TYPE_ICONS, MEAL_TYPE_LABELS } from '../services/nutritionGoals';
 import { reanalyzeItem } from '../services/foodAnalyzer';
+import { useTheme } from '../services/theme';
 
 interface Props {
   visible: boolean;
@@ -33,6 +34,7 @@ const recalcTotals = (items: FoodItem[]): NutrientInfo => ({
 });
 
 const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
+  const { theme } = useTheme();
   const [items, setItems] = useState<FoodItem[]>(meal.items);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
@@ -143,24 +145,24 @@ const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: theme.separator }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: theme.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{icon} Edit {label}</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{icon} Edit {label}</Text>
           <TouchableOpacity
             onPress={handleSave}
             style={[styles.headerBtn, styles.saveHeaderBtn]}
             disabled={isSaving || !hasChanges}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#FF6B35" />
+              <ActivityIndicator size="small" color={theme.accent} />
             ) : (
-              <Text style={[styles.saveText, !hasChanges && styles.saveTextDisabled]}>
+              <Text style={[styles.saveText, { color: theme.accent }, !hasChanges && styles.saveTextDisabled]}>
                 Save
               </Text>
             )}
@@ -168,9 +170,9 @@ const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
         </View>
 
         {/* Totals */}
-        <View style={styles.totalsBar}>
-          <Text style={styles.totalsCalories}>{Math.round(totals.calories)}</Text>
-          <Text style={styles.totalsLabel}>kcal</Text>
+        <View style={[styles.totalsBar, { borderBottomColor: theme.separator }]}>
+          <Text style={[styles.totalsCalories, { color: theme.accent }]}>{Math.round(totals.calories)}</Text>
+          <Text style={[styles.totalsLabel, { color: theme.textTertiary }]}>kcal</Text>
           <View style={styles.totalsRow}>
             <Text style={[styles.totalsMacro, { color: NUTRIENT_COLORS.protein }]}>
               P {Math.round(totals.protein)}g
@@ -190,45 +192,45 @@ const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Items list */}
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>
             Ingredients ({items.length})
           </Text>
 
           {items.map((item, idx) => (
-            <View key={idx} style={styles.itemRow}>
+            <View key={idx} style={[styles.itemRow, { backgroundColor: theme.card, borderColor: theme.separator }]}>
               {editingIdx === idx ? (
                 <View>
-                  <Text style={styles.fieldLabel}>Food name</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textTertiary }]}>Food name</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="e.g. Grilled Chicken"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={theme.textQuaternary}
                     autoFocus
                   />
-                  <Text style={styles.fieldLabel}>Portion</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.textTertiary }]}>Portion</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
                     value={editPortion}
                     onChangeText={setEditPortion}
                     placeholder="e.g. 1 cup, 200g"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={theme.textQuaternary}
                   />
                   <View style={styles.editActions}>
                     <TouchableOpacity
-                      style={styles.updateBtn}
+                      style={[styles.updateBtn, { backgroundColor: theme.accent }]}
                       onPress={submitEdit}
                       disabled={isUpdating}
                     >
                       {isUpdating ? (
-                        <ActivityIndicator size="small" color="#FAFAFA" />
+                        <ActivityIndicator size="small" color={theme.text} />
                       ) : (
                         <Text style={styles.updateBtnText}>Update</Text>
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.editCancelBtn} onPress={cancelEdit}>
-                      <Text style={styles.editCancelText}>Cancel</Text>
+                      <Text style={[styles.editCancelText, { color: theme.textSecondary }]}>Cancel</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -239,12 +241,12 @@ const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
                       style={styles.itemNameArea}
                       onPress={() => startEdit(idx, item)}
                     >
-                      <Text style={styles.itemName}>
-                        {item.name} <Text style={styles.editHint}>✎</Text>
+                      <Text style={[styles.itemName, { color: theme.text }]}>
+                        {item.name} <Text style={[styles.editHint, { color: theme.textQuaternary }]}>✎</Text>
                       </Text>
-                      <Text style={styles.itemPortion}>{item.portion}</Text>
+                      <Text style={[styles.itemPortion, { color: theme.textTertiary }]}>{item.portion}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.itemCal}>{Math.round(item.calories)}</Text>
+                    <Text style={[styles.itemCal, { color: theme.accent }]}>{Math.round(item.calories)}</Text>
                     <TouchableOpacity
                       style={styles.removeBtn}
                       onPress={() => removeItem(idx)}
@@ -271,44 +273,44 @@ const EditMealModal: React.FC<Props> = ({ visible, meal, onClose, onSave }) => {
 
           {/* Add ingredient section */}
           {addMode ? (
-            <View style={styles.addCard}>
-              <Text style={styles.fieldLabel}>Food name</Text>
+            <View style={[styles.addCard, { backgroundColor: theme.card }]}>
+              <Text style={[styles.fieldLabel, { color: theme.textTertiary }]}>Food name</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
                 value={addName}
                 onChangeText={setAddName}
                 placeholder="e.g. Brown Rice"
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor={theme.textQuaternary}
                 autoFocus
               />
-              <Text style={styles.fieldLabel}>Portion (optional)</Text>
+              <Text style={[styles.fieldLabel, { color: theme.textTertiary }]}>Portion (optional)</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
                 value={addPortion}
                 onChangeText={setAddPortion}
                 placeholder="e.g. 1 cup, 150g"
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor={theme.textQuaternary}
               />
               <View style={styles.editActions}>
                 <TouchableOpacity
-                  style={styles.updateBtn}
+                  style={[styles.updateBtn, { backgroundColor: theme.accent }]}
                   onPress={submitAdd}
                   disabled={isAdding || !addName.trim()}
                 >
                   {isAdding ? (
-                    <ActivityIndicator size="small" color="#FAFAFA" />
+                    <ActivityIndicator size="small" color={theme.text} />
                   ) : (
                     <Text style={styles.updateBtnText}>Add</Text>
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.editCancelBtn} onPress={cancelAdd}>
-                  <Text style={styles.editCancelText}>Cancel</Text>
+                  <Text style={[styles.editCancelText, { color: theme.textSecondary }]}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
-            <TouchableOpacity style={styles.addBtn} onPress={startAdd}>
-              <Text style={styles.addBtnText}>+ Add Ingredient</Text>
+            <TouchableOpacity style={[styles.addBtn, { borderColor: `${theme.accent}4D` }]} onPress={startAdd}>
+              <Text style={[styles.addBtnText, { color: theme.accent }]}>+ Add Ingredient</Text>
             </TouchableOpacity>
           )}
         </ScrollView>

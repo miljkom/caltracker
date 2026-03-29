@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,15 @@ import { format } from 'date-fns';
 import NutrientRing from '../components/NutrientRing';
 import MealCard from '../components/MealCard';
 import EditMealModal from '../components/EditMealModal';
+import MealDetailModal from '../components/MealDetailModal';
 import { getMealsForDay, getDailyTotals, deleteMeal, updateMeal, getLoggingStreak, logWater, getWaterForDay, undoLastWater } from '../services/mealStorage';
 import { DEFAULT_GOALS, NUTRIENT_COLORS, loadGoals, loadWaterGoal, DEFAULT_WATER_GOAL } from '../services/nutritionGoals';
 import { MealEntry, DailyTotals, DailyGoals, NutrientInfo, FoodItem } from '../types/nutrition';
 import { getMealSuggestions, getRecipe } from '../services/mealSuggestions';
+import { useTheme } from '../services/theme';
 
 const DashboardScreen: React.FC = () => {
+  const { theme } = useTheme();
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [totals, setTotals] = useState<DailyTotals>({
     calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, meals: 0,
@@ -37,6 +40,48 @@ const DashboardScreen: React.FC = () => {
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
   const [customWater, setCustomWater] = useState('');
   const [showCustomWater, setShowCustomWater] = useState(false);
+  const [detailMeal, setDetailMeal] = useState<MealEntry | null>(null);
+
+  // Animated calorie count-up
+  const [displayCalories, setDisplayCalories] = useState(0);
+  const calAnimRef = useRef<ReturnType<typeof requestAnimationFrame>>();
+  const calMountRef = useRef(0);
+
+  useEffect(() => {
+    calMountRef.current++;
+    const thisMountVal = calMountRef.current;
+    const target = Math.round(totals.calories);
+    const start = displayCalories;
+    if (target === start) return;
+
+    const duration = 500;
+    const startTime = Date.now();
+
+    const animate = () => {
+      if (thisMountVal !== calMountRef.current) return;
+      const elapsed = Date.now() - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplayCalories(Math.round(start + (target - start) * eased));
+      if (t < 1) {
+        calAnimRef.current = requestAnimationFrame(animate);
+      }
+    };
+    calAnimRef.current = requestAnimationFrame(animate);
+    return () => { if (calAnimRef.current) cancelAnimationFrame(calAnimRef.current); };
+  }, [totals.calories]);
+
+  const headerFade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(headerFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  }, []);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const waterScale = React.useRef(new Animated.Value(1)).current;
   const bounceWater = () => {
@@ -135,19 +180,19 @@ const DashboardScreen: React.FC = () => {
     }
   }, [totals.calories, totals.meals]);
 
-  const remaining = goals.calories - totals.calories;
+  const remaining = goals.calories - displayCalories;
   const getRemainingText = () => {
-    if (totals.calories === 0) return 'Start logging your meals!';
+    if (displayCalories === 0) return 'Start logging your meals!';
     if (remaining > goals.calories * 0.5) return `${Math.round(remaining)} kcal remaining`;
     if (remaining > 0) return `${Math.round(remaining)} kcal to go — almost there!`;
     if (remaining >= -100) return 'Goal reached — nice work!';
     return `${Math.abs(Math.round(remaining))} kcal over goal`;
   };
-  const goalReached = totals.calories > 0 && remaining <= 0 && remaining >= -100;
+  const goalReached = displayCalories > 0 && remaining <= 0 && remaining >= -100;
   const dateStr = format(new Date(), 'EEEE, MMM d');
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -155,20 +200,23 @@ const DashboardScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#FF6B35"
+            tintColor={theme.accent}
           />
         }
       >
-        {/* Date header */}
-        <Text style={styles.date}>{dateStr}</Text>
-        <Text style={[styles.greeting, goalReached && { color: '#4ECDC4' }]}>
-          {getRemainingText()}
-        </Text>
-        {streak >= 2 && (
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-          </View>
-        )}
+        {/* Greeting header */}
+        <Animated.View style={{ opacity: headerFade }}>
+          <Text style={[styles.date, { color: theme.textTertiary }]}>{dateStr}</Text>
+          <Text style={[styles.greetingName, { color: theme.text }]}>{getGreeting()}</Text>
+          <Text style={[styles.greeting, { color: theme.textSecondary }, goalReached && { color: '#4ECDC4' }]}>
+            {getRemainingText()}
+          </Text>
+          {streak >= 2 && (
+            <View style={styles.streakBadge}>
+              <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
+            </View>
+          )}
+        </Animated.View>
 
         {/* Main calorie ring */}
         <View key={`rings-${renderKey}`} style={styles.mainRingContainer}>
@@ -228,7 +276,7 @@ const DashboardScreen: React.FC = () => {
             label="Meals"
             current={totals.meals}
             goal={0}
-            color="rgba(255,255,255,0.4)"
+            color={theme.textTertiary}
             hideGoal
           />
         </View>
@@ -237,28 +285,28 @@ const DashboardScreen: React.FC = () => {
         {totals.meals > 0 && new Date().getHours() >= 12 && (
           <View style={styles.tipsSection}>
             {totals.protein < goals.protein * 0.5 && (
-              <View style={styles.tipCard}>
-                <Text style={styles.tipText}>
+              <View style={[styles.tipCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                <Text style={[styles.tipText, { color: theme.textSecondary }]}>
                   💪 Protein is low today — try chicken, eggs, or Greek yogurt
                 </Text>
               </View>
             )}
             {totals.fiber < goals.fiber * 0.4 && (
-              <View style={styles.tipCard}>
-                <Text style={styles.tipText}>
+              <View style={[styles.tipCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                <Text style={[styles.tipText, { color: theme.textSecondary }]}>
                   🥦 Need more fiber — add veggies, beans, or whole grains
                 </Text>
               </View>
             )}
             {totals.sugar > goals.sugar * 1.2 && (
-              <View style={styles.tipCard}>
+              <View style={[styles.tipCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                 <Text style={[styles.tipText, { color: '#FF6B6B' }]}>
                   🍬 Sugar is over target — watch for hidden sugars in drinks
                 </Text>
               </View>
             )}
             {totals.fat > goals.fat * 1.3 && (
-              <View style={styles.tipCard}>
+              <View style={[styles.tipCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
                 <Text style={[styles.tipText, { color: '#FF6B6B' }]}>
                   🧈 Fat is high today — go lighter on oils and sauces
                 </Text>
@@ -270,19 +318,19 @@ const DashboardScreen: React.FC = () => {
         {/* AI Meal suggestions */}
         {totals.meals > 0 && (aiSuggestions.length > 0 || loadingSuggestions) && (
           <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionTitle}>What to eat next</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>What to eat next</Text>
             {loadingSuggestions && aiSuggestions.length === 0 ? (
-              <View style={styles.suggestionCard}>
-                <Text style={styles.suggestionText}>Thinking of meal ideas...</Text>
+              <View style={[styles.suggestionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                <Text style={[styles.suggestionText, { color: theme.textTertiary }]}>Thinking of meal ideas...</Text>
               </View>
             ) : (
               aiSuggestions.map((s, i) => (
-                <TouchableOpacity key={i} style={styles.suggestionCard} onPress={() => handleSuggestionTap(s)} activeOpacity={0.7}>
+                <TouchableOpacity key={i} style={[styles.suggestionCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]} onPress={() => handleSuggestionTap(s)} activeOpacity={0.7}>
                   <View style={styles.suggestionHeader}>
-                    <Text style={styles.suggestionName}>{s.name}</Text>
+                    <Text style={[styles.suggestionName, { color: theme.text }]}>{s.name}</Text>
                     <Text style={styles.suggestionCal}>~{s.approxCalories} kcal</Text>
                   </View>
-                  <Text style={styles.suggestionDesc}>{s.description}</Text>
+                  <Text style={[styles.suggestionDesc, { color: theme.textTertiary }]}>{s.description}</Text>
                   <Text style={styles.suggestionTap}>Tap for recipe</Text>
                 </TouchableOpacity>
               ))
@@ -301,7 +349,7 @@ const DashboardScreen: React.FC = () => {
             </View>
             {water > 0 && (
               <TouchableOpacity onPress={async () => { await undoLastWater(); await loadData(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Undo last water entry" accessibilityRole="button">
-                <Text style={styles.waterUndo}>Undo</Text>
+                <Text style={[styles.waterUndo, { color: theme.textTertiary }]}>Undo</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -338,11 +386,11 @@ const DashboardScreen: React.FC = () => {
           {showCustomWater && (
             <View style={styles.customWaterRow}>
               <TextInput
-                style={styles.customWaterInput}
+                style={[styles.customWaterInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
                 value={customWater}
                 onChangeText={setCustomWater}
                 placeholder="ml"
-                placeholderTextColor="rgba(255,255,255,0.25)"
+                placeholderTextColor={theme.textQuaternary}
                 keyboardType="number-pad"
                 maxLength={4}
               />
@@ -371,15 +419,15 @@ const DashboardScreen: React.FC = () => {
 
         {/* Meals list */}
         <View style={styles.mealsSection}>
-          <Text style={styles.sectionTitle}>Today's Meals</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>Today's Meals</Text>
           {meals.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🍽️</Text>
-              <Text style={styles.emptyText}>No meals logged yet today</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No meals logged yet today</Text>
               <View style={styles.stepsContainer}>
-                <Text style={styles.stepText}>1. Tap the <Text style={styles.stepHighlight}>Scan</Text> tab below</Text>
-                <Text style={styles.stepText}>2. Take a photo of your food</Text>
-                <Text style={styles.stepText}>3. Review and log your meal</Text>
+                <Text style={[styles.stepText, { color: theme.textTertiary }]}>1. Tap the <Text style={styles.stepHighlight}>Scan</Text> tab below</Text>
+                <Text style={[styles.stepText, { color: theme.textTertiary }]}>2. Take a photo of your food</Text>
+                <Text style={[styles.stepText, { color: theme.textTertiary }]}>3. Review and log your meal</Text>
               </View>
             </View>
           ) : (
@@ -387,6 +435,7 @@ const DashboardScreen: React.FC = () => {
               <MealCard
                 key={meal.id}
                 meal={meal}
+                onPress={() => setDetailMeal(meal)}
                 onDelete={() => handleDeleteMeal(meal)}
                 onEdit={() => handleEditMeal(meal)}
               />
@@ -403,26 +452,34 @@ const DashboardScreen: React.FC = () => {
         onRequestClose={() => setRecipeModal(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{recipeModal?.name}</Text>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.separator }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{recipeModal?.name}</Text>
               <TouchableOpacity onPress={() => setRecipeModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={styles.modalClose}>✕</Text>
+                <Text style={[styles.modalClose, { color: theme.textSecondary }]}>✕</Text>
               </TouchableOpacity>
             </View>
             {loadingRecipe ? (
               <View style={styles.modalLoading}>
-                <ActivityIndicator size="large" color="#FF6B35" />
-                <Text style={styles.modalLoadingText}>Generating recipe...</Text>
+                <ActivityIndicator size="large" color={theme.accent} />
+                <Text style={[styles.modalLoadingText, { color: theme.textSecondary }]}>Generating recipe...</Text>
               </View>
             ) : (
               <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                <Text style={styles.recipeText}>{recipeModal?.text}</Text>
+                <Text style={[styles.recipeText, { color: theme.text }]}>{recipeModal?.text}</Text>
               </ScrollView>
             )}
           </View>
         </View>
       </Modal>
+
+      {detailMeal && (
+        <MealDetailModal
+          visible={!!detailMeal}
+          meal={detailMeal}
+          onClose={() => setDetailMeal(null)}
+        />
+      )}
 
       {editingMeal && (
         <EditMealModal
@@ -442,16 +499,19 @@ const NutrientPill: React.FC<{
   goal: number;
   color: string;
   hideGoal?: boolean;
-}> = ({ label, current, goal, color, hideGoal }) => (
-  <View style={styles.nutrientPill}>
+}> = ({ label, current, goal, color, hideGoal }) => {
+  const { theme: t } = useTheme();
+  return (
+  <View style={[styles.nutrientPill, { backgroundColor: t.pillBg }]}>
     <View style={[styles.nutrientDot, { backgroundColor: color }]} />
-    <Text style={styles.nutrientPillLabel}>{label}</Text>
-    <Text style={styles.nutrientPillValue}>
+    <Text style={[styles.nutrientPillLabel, { color: t.textSecondary }]}>{label}</Text>
+    <Text style={[styles.nutrientPillValue, { color: t.text }]}>
       {Math.round(current)}
       {!hideGoal ? `/${goal}g` : ''}
     </Text>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {
@@ -470,12 +530,18 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  greeting: {
+  greetingName: {
     color: '#FAFAFA',
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     marginTop: 4,
     letterSpacing: -0.5,
+  },
+  greeting: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 2,
   },
   streakBadge: {
     backgroundColor: 'rgba(255,107,53,0.15)',

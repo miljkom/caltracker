@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { useTheme } from '../services/theme';
 
 interface Props {
   current: number;
@@ -21,6 +22,9 @@ const NutrientRing: React.FC<Props> = ({
   label,
   unit = '',
 }) => {
+  const { theme, themeName } = useTheme();
+  const trackColor = themeName === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const targetProgress = Math.min(current / goal, 1);
@@ -74,7 +78,7 @@ const NutrientRing: React.FC<Props> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="rgba(255,255,255,0.08)"
+          stroke={trackColor}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -94,10 +98,10 @@ const NutrientRing: React.FC<Props> = ({
         />
       </Svg>
       <View style={[styles.labelContainer, { width: size, height: size }]}>
-        <Text style={[styles.value, { color: isOver ? '#FF4444' : '#FAFAFA' }]}>
+        <Text style={[styles.value, { color: isOver ? '#FF4444' : theme.text }]}>
           {Math.round(current)}
         </Text>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: theme.textTertiary }]}>{label}</Text>
       </View>
     </View>
   );

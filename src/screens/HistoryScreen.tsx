@@ -14,17 +14,21 @@ import { format, isToday, isYesterday } from 'date-fns';
 import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
 import MealCard from '../components/MealCard';
 import EditMealModal from '../components/EditMealModal';
+import MealDetailModal from '../components/MealDetailModal';
 import { getRecentMeals, deleteMeal, updateMeal, getWeeklyTotals } from '../services/mealStorage';
 import { loadGoals } from '../services/nutritionGoals';
 import { MealEntry, NutrientInfo, FoodItem } from '../types/nutrition';
+import { useTheme } from '../services/theme';
 
 const HistoryScreen: React.FC = () => {
+  const { theme } = useTheme();
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyData, setWeeklyData] = useState<{ date: string; calories: number; protein: number; carbs: number; fat: number }[]>([]);
   const [calorieGoal, setCalorieGoal] = useState(2000);
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
+  const [detailMeal, setDetailMeal] = useState<MealEntry | null>(null);
 
   const loadData = async () => {
     const [recent, weekly, goals] = await Promise.all([
@@ -91,32 +95,31 @@ const HistoryScreen: React.FC = () => {
   const maxCal = Math.max(...weeklyData.map(d => d.calories), calorieGoal) * 1.1;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
         }
       >
-        <Text style={styles.title}>History</Text>
+        <Text style={[styles.title, { color: theme.text }]}>History</Text>
 
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.text, backgroundColor: theme.inputBg }]}
           value={search}
           onChangeText={setSearch}
           placeholder="Search meals..."
-          placeholderTextColor="rgba(255,255,255,0.25)"
+          placeholderTextColor={theme.textTertiary}
           clearButtonMode="while-editing"
         />
 
         {/* Weekly Overview */}
         {weeklyData.length > 0 && weeklyData.some(d => d.calories > 0) && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>This Week</Text>
+          <View style={[styles.chartContainer, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+            <Text style={[styles.chartTitle, { color: theme.textTertiary }]}>This Week</Text>
             <View style={styles.chart}>
               <Svg width={chartWidth} height={160}>
-                {/* Goal line */}
                 <Line
                   x1={0}
                   y1={160 - (calorieGoal / maxCal) * 140}
@@ -126,7 +129,6 @@ const HistoryScreen: React.FC = () => {
                   strokeWidth={1}
                   strokeDasharray="4,4"
                 />
-                {/* Bars */}
                 {weeklyData.map((day, i) => {
                   const barHeight = maxCal > 0 ? (day.calories / maxCal) * 140 : 0;
                   const isCurrentDay = i === 6;
@@ -138,13 +140,13 @@ const HistoryScreen: React.FC = () => {
                         width={barWidth}
                         height={barHeight}
                         rx={4}
-                        fill={isCurrentDay ? '#FF6B35' : 'rgba(255,255,255,0.15)'}
+                        fill={isCurrentDay ? '#FF6B35' : theme.chartBar}
                       />
                       <SvgText
                         x={i * barSpacing + barPadding + barWidth / 2}
                         y={155}
                         fontSize={9}
-                        fill={isCurrentDay ? '#FF6B35' : 'rgba(255,255,255,0.35)'}
+                        fill={isCurrentDay ? '#FF6B35' : theme.chartLabel}
                         textAnchor="middle"
                       >
                         {day.date}
@@ -154,7 +156,7 @@ const HistoryScreen: React.FC = () => {
                           x={i * barSpacing + barPadding + barWidth / 2}
                           y={160 - barHeight - 5}
                           fontSize={9}
-                          fill="rgba(255,255,255,0.5)"
+                          fill={theme.textSecondary}
                           textAnchor="middle"
                         >
                           {Math.round(day.calories)}
@@ -168,15 +170,15 @@ const HistoryScreen: React.FC = () => {
             <View style={styles.chartLegend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#FF6B35' }]} />
-                <Text style={styles.legendText}>Today</Text>
+                <Text style={[styles.legendText, { color: theme.textTertiary }]}>Today</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }]} />
-                <Text style={styles.legendText}>Previous days</Text>
+                <View style={[styles.legendDot, { backgroundColor: theme.chartBar, borderWidth: 1, borderColor: theme.separator }]} />
+                <Text style={[styles.legendText, { color: theme.textTertiary }]}>Previous days</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={{ width: 12, height: 1, backgroundColor: 'rgba(255,107,53,0.3)' }} />
-                <Text style={styles.legendText}>Goal</Text>
+                <Text style={[styles.legendText, { color: theme.textTertiary }]}>Goal</Text>
               </View>
             </View>
           </View>
@@ -185,8 +187,8 @@ const HistoryScreen: React.FC = () => {
         {filteredMeals.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyText}>No meals logged yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No meals logged yet</Text>
+            <Text style={[styles.emptySubtext, { color: theme.textTertiary }]}>
               Start scanning food to build your history
             </Text>
           </View>
@@ -194,7 +196,7 @@ const HistoryScreen: React.FC = () => {
           grouped.map(({ label, dayMeals, totalCals }) => (
             <View key={label} style={styles.dayGroup}>
               <View style={styles.dayHeader}>
-                <Text style={styles.dayLabel}>{label}</Text>
+                <Text style={[styles.dayLabel, { color: theme.textSecondary }]}>{label}</Text>
                 <Text style={styles.dayCals}>
                   {Math.round(totalCals)} kcal
                 </Text>
@@ -203,6 +205,7 @@ const HistoryScreen: React.FC = () => {
                 <MealCard
                   key={meal.id}
                   meal={meal}
+                  onPress={() => setDetailMeal(meal)}
                   onDelete={() => handleDelete(meal)}
                   onEdit={() => handleEditMeal(meal)}
                 />
@@ -211,6 +214,14 @@ const HistoryScreen: React.FC = () => {
           ))
         )}
       </ScrollView>
+
+      {detailMeal && (
+        <MealDetailModal
+          visible={!!detailMeal}
+          meal={detailMeal}
+          onClose={() => setDetailMeal(null)}
+        />
+      )}
 
       {editingMeal && (
         <EditMealModal
