@@ -46,6 +46,7 @@ const MealPlannerScreen: React.FC = () => {
   const [rejectedNames, setRejectedNames] = useState<string[]>([]);
   const [userFeedback, setUserFeedback] = useState<string[]>([]);
   const [rejectedCount, setRejectedCount] = useState(0);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const MEAL_PHASES = ['breakfast', 'lunch', 'dinner'] as const;
   type MealPhase = typeof MEAL_PHASES[number];
@@ -234,6 +235,7 @@ const MealPlannerScreen: React.FC = () => {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
         }
@@ -313,6 +315,8 @@ const MealPlannerScreen: React.FC = () => {
             onAccept={handleAccept}
             onReject={handleReject}
             onRequestMore={handleRequestMore}
+            onSwipeStart={() => setScrollEnabled(false)}
+            onSwipeEnd={() => setScrollEnabled(true)}
           />
         ) : (
           <MealPlanView

@@ -10,6 +10,8 @@ interface Props {
   onAccept: (suggestion: MealSuggestionCard) => void;
   onReject: (suggestion: MealSuggestionCard) => void;
   onRequestMore: () => void;
+  onSwipeStart?: () => void;
+  onSwipeEnd?: () => void;
 }
 
 const SwipeDeck: React.FC<Props> = ({
@@ -18,6 +20,8 @@ const SwipeDeck: React.FC<Props> = ({
   onAccept,
   onReject,
   onRequestMore,
+  onSwipeStart,
+  onSwipeEnd,
 }) => {
   const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,6 +87,8 @@ const SwipeDeck: React.FC<Props> = ({
         suggestion={current}
         onSwipeRight={handleSwipeRight}
         onSwipeLeft={handleSwipeLeft}
+        onSwipeStart={onSwipeStart}
+        onSwipeEnd={onSwipeEnd}
       />
 
       {/* Counter */}

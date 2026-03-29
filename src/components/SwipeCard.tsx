@@ -11,9 +11,11 @@ interface Props {
   suggestion: MealSuggestionCard;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
+  onSwipeStart?: () => void;
+  onSwipeEnd?: () => void;
 }
 
-const SwipeCard: React.FC<Props> = ({ suggestion, onSwipeLeft, onSwipeRight }) => {
+const SwipeCard: React.FC<Props> = ({ suggestion, onSwipeLeft, onSwipeRight, onSwipeStart, onSwipeEnd }) => {
   const translateX = useRef(new Animated.Value(0)).current;
   const hapticFired = useRef(false);
   const swiped = useRef(false);
@@ -32,8 +34,14 @@ const SwipeCard: React.FC<Props> = ({ suggestion, onSwipeLeft, onSwipeRight }) =
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, g) =>
-        Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy * 1.5),
+        Math.abs(g.dx) > 5 && Math.abs(g.dx) > Math.abs(g.dy),
+      onMoveShouldSetPanResponderCapture: (_, g) =>
+        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderGrant: () => {
+        onSwipeStart?.();
+      },
       onPanResponderMove: (_, g) => {
         translateX.setValue(g.dx);
         if (Math.abs(g.dx) > SWIPE_THRESHOLD && !hapticFired.current) {
@@ -45,6 +53,7 @@ const SwipeCard: React.FC<Props> = ({ suggestion, onSwipeLeft, onSwipeRight }) =
       },
       onPanResponderRelease: (_, g) => {
         hapticFired.current = false;
+        onSwipeEnd?.();
         if (g.dx > SWIPE_THRESHOLD) {
           Animated.timing(translateX, {
             toValue: SCREEN_WIDTH * 1.5,
@@ -64,6 +73,9 @@ const SwipeCard: React.FC<Props> = ({ suggestion, onSwipeLeft, onSwipeRight }) =
             friction: 7,
           }).start();
         }
+      },
+      onPanResponderTerminate: () => {
+        onSwipeEnd?.();
       },
     })
   ).current;
