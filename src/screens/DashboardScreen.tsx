@@ -10,6 +10,7 @@ import {
   Animated,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -34,6 +35,8 @@ const DashboardScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [renderKey, setRenderKey] = useState(0);
   const [editingMeal, setEditingMeal] = useState<MealEntry | null>(null);
+  const [customWater, setCustomWater] = useState('');
+  const [showCustomWater, setShowCustomWater] = useState(false);
 
   const waterScale = React.useRef(new Animated.Value(1)).current;
   const bounceWater = () => {
@@ -289,25 +292,81 @@ const DashboardScreen: React.FC = () => {
 
         {/* Water tracking */}
         <Animated.View style={[styles.waterSection, { transform: [{ scale: waterScale }] }]}>
-          <View style={styles.waterInfo}>
-            <Text style={styles.waterIcon}>💧</Text>
-            <Text style={styles.waterText}>
-              {water} / {waterGoal} ml
-            </Text>
+          <View style={styles.waterHeader}>
+            <View style={styles.waterInfo}>
+              <Text style={styles.waterIcon}>💧</Text>
+              <Text style={styles.waterText}>
+                {water} / {waterGoal} ml
+              </Text>
+            </View>
+            {water > 0 && (
+              <TouchableOpacity onPress={async () => { await undoLastWater(); await loadData(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Undo last water entry" accessibilityRole="button">
+                <Text style={styles.waterUndo}>Undo</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          {water > 0 && (
-            <TouchableOpacity onPress={async () => { await undoLastWater(); await loadData(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Undo last water entry" accessibilityRole="button">
-              <Text style={styles.waterUndo}>Undo</Text>
-            </TouchableOpacity>
-          )}
+
+          {/* Progress bar */}
+          <View style={styles.waterProgressBg}>
+            <View style={[styles.waterProgressFill, { width: `${Math.min((water / waterGoal) * 100, 100)}%` }]} />
+          </View>
+
+          {/* Quick-add buttons */}
           <View style={styles.waterButtons}>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(250); await loadData(); }} accessibilityLabel="Add 250 milliliters of water" accessibilityRole="button">
-              <Text style={styles.waterBtnText}>+250ml</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.waterBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(500); await loadData(); }} accessibilityLabel="Add 500 milliliters of water" accessibilityRole="button">
-              <Text style={styles.waterBtnText}>+500ml</Text>
+            {[150, 250, 330, 500].map((amount) => (
+              <TouchableOpacity
+                key={amount}
+                style={styles.waterBtn}
+                onPress={async () => { bounceWater(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); await logWater(amount); await loadData(); }}
+                accessibilityLabel={`Add ${amount} milliliters of water`}
+                accessibilityRole="button"
+              >
+                <Text style={styles.waterBtnText}>+{amount}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.waterBtn, showCustomWater && styles.waterBtnActive]}
+              onPress={() => setShowCustomWater(!showCustomWater)}
+              accessibilityLabel="Custom water amount"
+              accessibilityRole="button"
+            >
+              <Text style={styles.waterBtnText}>...</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Custom amount input */}
+          {showCustomWater && (
+            <View style={styles.customWaterRow}>
+              <TextInput
+                style={styles.customWaterInput}
+                value={customWater}
+                onChangeText={setCustomWater}
+                placeholder="ml"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                keyboardType="number-pad"
+                maxLength={4}
+              />
+              <TouchableOpacity
+                style={[styles.customWaterAdd, !customWater.trim() && styles.customWaterAddDisabled]}
+                disabled={!customWater.trim()}
+                onPress={async () => {
+                  const amount = parseInt(customWater, 10);
+                  if (!amount || amount <= 0 || amount > 5000) {
+                    Alert.alert('Invalid', 'Enter a value between 1 and 5000 ml.');
+                    return;
+                  }
+                  bounceWater();
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  await logWater(amount);
+                  await loadData();
+                  setCustomWater('');
+                  setShowCustomWater(false);
+                }}
+              >
+                <Text style={styles.customWaterAddText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Animated.View>
 
         {/* Meals list */}
@@ -442,15 +501,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   waterSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: 'rgba(78,205,196,0.08)',
     borderRadius: 14,
     padding: 14,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(78,205,196,0.15)',
+  },
+  waterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   waterInfo: {
     flexDirection: 'row',
@@ -465,25 +527,75 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  waterProgressBg: {
+    height: 6,
+    backgroundColor: 'rgba(78,205,196,0.12)',
+    borderRadius: 3,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  waterProgressFill: {
+    height: 6,
+    backgroundColor: '#4ECDC4',
+    borderRadius: 3,
+  },
   waterButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   waterBtn: {
+    flex: 1,
     backgroundColor: 'rgba(78,205,196,0.15)',
-    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
+    alignItems: 'center',
+  },
+  waterBtnActive: {
+    backgroundColor: 'rgba(78,205,196,0.3)',
+    borderWidth: 1,
+    borderColor: '#4ECDC4',
   },
   waterBtnText: {
     color: '#4ECDC4',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   waterUndo: {
     color: 'rgba(255,255,255,0.3)',
     fontSize: 11,
     fontWeight: '600',
+  },
+  customWaterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  customWaterInput: {
+    flex: 1,
+    color: '#FAFAFA',
+    fontSize: 15,
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(78,205,196,0.2)',
+  },
+  customWaterAdd: {
+    backgroundColor: '#4ECDC4',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  customWaterAddDisabled: {
+    opacity: 0.4,
+  },
+  customWaterAddText: {
+    color: '#0A0A0A',
+    fontSize: 14,
+    fontWeight: '700',
   },
   extraNutrients: {
     flexDirection: 'row',

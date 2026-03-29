@@ -34,18 +34,18 @@ const TEXT_MODELS = [
 ];
 // ============================================================
 
-const ANALYSIS_PROMPT = `You are a nutrition analysis AI. Identify every food item in this photo and estimate its nutritional content.
+const ANALYSIS_PROMPT = `You are a precise nutrition analysis AI used for daily calorie tracking. Identify every food item in this photo and estimate its nutritional content.
 
 Respond ONLY with valid JSON (no markdown, no backticks, no explanation):
 {
   "items": [
     {
       "name": "Grilled Chicken Breast",
-      "portion": "~6 oz / 170g",
-      "calories": 280,
-      "protein": 53,
+      "portion": "~150g",
+      "calories": 248,
+      "protein": 46,
       "carbs": 0,
-      "fat": 6,
+      "fat": 5,
       "fiber": 0,
       "sugar": 0,
       "confidence": 0.85
@@ -54,13 +54,35 @@ Respond ONLY with valid JSON (no markdown, no backticks, no explanation):
   "meal_type": "lunch"
 }
 
-Rules:
+COMPOSITE DISH RULES (CRITICAL):
+- When a meal is a COMPOSITE DISH (e.g. "salad with egg, corn, yogurt" or "wrap with tuna and veggies"), list it as ONE item with the total nutrition of the whole dish combined
+- Do NOT split a single dish into its raw ingredients — "Egg & Corn Salad with Greek Yogurt" is ONE item, not 4 separate items
+- Only list SEPARATE items when they are truly distinct dishes on the plate (e.g. a wrap AND a side salad = 2 items)
+- The item name should describe the whole dish (e.g. "Tuna Tortilla Wrap with Egg Salad", not "Tuna" + "Tortilla" + "Eggs" + "Corn" separately)
+- Calculate the nutrition for the WHOLE composed dish as one entry
+
+PORTION SIZE RULES (CRITICAL — users report overestimation):
+- Use a STANDARD dinner plate (25-27cm / 10-11in) as reference for scale
+- Default to SMALLER, realistic home-cooked portions, not restaurant-sized
+- Meat/fish: a typical serving is 100-150g (size of a palm), NOT 200g+
+- Rice/pasta/potatoes (cooked): a typical serving is 150-200g, NOT 300g+
+- Bread: one slice is ~30-40g
+- A tortilla/wrap: ~60-70g
+- Salad/vegetables: estimate by visual volume, typically 80-150g
+- When in doubt, round DOWN, not up — underestimating is safer for tracking
+- Always express portions in metric (grams) as primary unit
+
+FOOD IDENTIFICATION RULES:
+- The user is from Serbia — recognize Balkan/Serbian dishes correctly
+- Serbian food examples: ćevapi, pljeskavica, gibanica, burek, sarma, kajmak, ajvar, proja, pasulj, musaka, karađorđeva šnicla, prebranac, urnebes, podvarak, ražnjići, čvarci, lepinja
+- Use the ENGLISH name if a common translation exists (e.g. "Bean Soup" for pasulj, "Stuffed Cabbage Rolls" for sarma)
+- If no good English equivalent, keep the original Serbian name (e.g. "Ćevapi", "Kajmak", "Ajvar")
+- For international foods, use standard English names
 - Identify ALL distinct food items visible
-- Estimate portion sizes from visual cues (plate size, utensils, hands)
-- All nutrient values in grams except calories (kcal)
 - confidence: 0-1 how certain you are about identification
 - meal_type: breakfast/lunch/dinner/snack (infer from food + time context)
-- Be as accurate as possible — users rely on this for health tracking`;
+- All nutrient values in grams except calories (kcal)
+- Be accurate — users rely on this for daily health tracking`;
 
 const sumNutrients = (items: FoodItem[]): NutrientInfo => ({
   calories: items.reduce((sum, i) => sum + i.calories, 0),
@@ -294,18 +316,23 @@ const SINGLE_ITEM_PROMPT = `You are a nutrition database. Given a food item name
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 {
-  "name": "the food name",
-  "portion": "the portion",
-  "calories": 280,
-  "protein": 53,
+  "name": "the food name in English",
+  "portion": "the portion in grams",
+  "calories": 248,
+  "protein": 46,
   "carbs": 0,
-  "fat": 6,
+  "fat": 5,
   "fiber": 0,
   "sugar": 0,
   "confidence": 0.9
 }
 
-All nutrient values in grams except calories (kcal). Be accurate.`;
+Rules:
+- All nutrient values in grams except calories (kcal)
+- Express portions in metric (grams) as primary unit
+- If the food name is in Serbian or another language, translate to English (e.g. "pileći batak" → "Chicken Drumstick", "pasulj" → "Bean Soup"). Keep original name only if no good English equivalent exists (e.g. "Ćevapi", "Kajmak")
+- Use realistic portion sizes — default to standard home-cooked servings, not restaurant portions
+- Be accurate — this is used for daily calorie tracking`;
 
 export const reanalyzeItem = async (
   foodName: string,
