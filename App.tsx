@@ -6,6 +6,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ScanScreen from './src/screens/ScanScreen';
+import MealPlannerScreen from './src/screens/MealPlannerScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -105,56 +106,65 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={{ theme: themes[themeName], themeName, toggleTheme }}>
       <ErrorBoundary>
-        <NavigationContainer>
-          <StatusBar style={themeName === 'dark' ? 'light' : 'dark'} />
-          <Tab.Navigator
-            screenOptions={{
-              headerShown: false,
-              tabBarStyle: {
-                ...styles.tabBar,
-                backgroundColor: themes[themeName].tabBar,
-                borderTopColor: themes[themeName].tabBorder,
-              },
-              tabBarShowLabel: false,
-              lazy: false,
-            }}
-          >
-            <Tab.Screen
-              name="Dashboard"
-              component={DashboardScreen}
-              options={{
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon="🏠" label="Today" focused={focused} />
-                ),
+          <NavigationContainer>
+            <StatusBar style={themeName === 'dark' ? 'light' : 'dark'} />
+            <Tab.Navigator
+              screenOptions={{
+                headerShown: false,
+                tabBarStyle: {
+                  ...styles.tabBar,
+                  backgroundColor: themes[themeName].tabBar,
+                  borderTopColor: themes[themeName].tabBorder,
+                },
+                tabBarShowLabel: false,
+                lazy: false,
               }}
-            />
-            <Tab.Screen
-              name="Scan"
-              component={ScanScreen}
-              options={{
-                tabBarIcon: ({ focused }) => <ScanTabButton focused={focused} />,
-              }}
-            />
-            <Tab.Screen
-              name="History"
-              component={HistoryScreen}
-              options={{
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon="📋" label="Log" focused={focused} />
-                ),
-              }}
-            />
-            <Tab.Screen
-              name="Settings"
-              component={SettingsScreen}
-              options={{
-                tabBarIcon: ({ focused }) => (
-                  <TabIcon icon="⚙️" label="Settings" focused={focused} />
-                ),
-              }}
-            />
-          </Tab.Navigator>
-        </NavigationContainer>
+            >
+              <Tab.Screen
+                name="Dashboard"
+                component={DashboardScreen}
+                options={{
+                  tabBarIcon: ({ focused }) => (
+                    <TabIcon icon="🏠" label="Today" focused={focused} />
+                  ),
+                }}
+              />
+              <Tab.Screen
+                name="Scan"
+                component={ScanScreen}
+                options={{
+                  tabBarIcon: ({ focused }) => <ScanTabButton focused={focused} />,
+                }}
+              />
+              <Tab.Screen
+                name="Plan"
+                component={MealPlannerScreen}
+                options={{
+                  tabBarIcon: ({ focused }) => (
+                    <TabIcon icon="🍽️" label="Plan" focused={focused} />
+                  ),
+                }}
+              />
+              <Tab.Screen
+                name="History"
+                component={HistoryScreen}
+                options={{
+                  tabBarIcon: ({ focused }) => (
+                    <TabIcon icon="📋" label="Log" focused={focused} />
+                  ),
+                }}
+              />
+              <Tab.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{
+                  tabBarIcon: ({ focused }) => (
+                    <TabIcon icon="⚙️" label="Settings" focused={focused} />
+                  ),
+                }}
+              />
+            </Tab.Navigator>
+          </NavigationContainer>
       </ErrorBoundary>
     </ThemeContext.Provider>
   );

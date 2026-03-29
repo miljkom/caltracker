@@ -34,7 +34,9 @@ const TEXT_MODELS = [
 ];
 // ============================================================
 
-const ANALYSIS_PROMPT = `You are a precise nutrition analysis AI used for daily calorie tracking. Identify every food item in this photo and estimate its nutritional content.
+import { getRecentFeedback } from './mealPlanStorage';
+
+const BASE_ANALYSIS_PROMPT = `You are a precise nutrition analysis AI used for daily calorie tracking. Identify every food item in this photo and estimate its nutritional content.
 
 Respond ONLY with valid JSON (no markdown, no backticks, no explanation):
 {
@@ -83,6 +85,20 @@ FOOD IDENTIFICATION RULES:
 - meal_type: breakfast/lunch/dinner/snack (infer from food + time context)
 - All nutrient values in grams except calories (kcal)
 - Be accurate — users rely on this for daily health tracking`;
+
+const getAnalysisPrompt = async (): Promise<string> => {
+  try {
+    const feedback = await getRecentFeedback(10);
+    if (feedback.length === 0) return BASE_ANALYSIS_PROMPT;
+    const feedbackLines = feedback.map((f) => `- "${f.foodName}": ${f.feedback}`).join('\n');
+    return `${BASE_ANALYSIS_PROMPT}
+
+USER CORRECTIONS (learn from these — the user previously told us):
+${feedbackLines}`;
+  } catch {
+    return BASE_ANALYSIS_PROMPT;
+  }
+};
 
 const sumNutrients = (items: FoodItem[]): NutrientInfo => ({
   calories: items.reduce((sum, i) => sum + i.calories, 0),
@@ -290,12 +306,14 @@ const callGroqText = async (prompt: string): Promise<string> => {
 // Multi-provider vision analysis: Gemini → Groq
 // ============================================================
 const analyzeWithVision = async (base64Image: string): Promise<AnalysisResult> => {
+  const prompt = await getAnalysisPrompt();
+
   // Try Gemini first (all models)
   const geminiResult = await callGemini([
     {
       parts: [
         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-        { text: ANALYSIS_PROMPT },
+        { text: prompt },
       ],
     },
   ]);
@@ -305,7 +323,7 @@ const analyzeWithVision = async (base64Image: string): Promise<AnalysisResult> =
   }
 
   // Fallback to Groq
-  const groqResult = await callGroq(base64Image, ANALYSIS_PROMPT);
+  const groqResult = await callGroq(base64Image, prompt);
   return parseResponse(groqResult);
 };
 
@@ -373,7 +391,8 @@ export const reanalyzeItem = async (
 // Text-only meal analysis (no photo)
 // ============================================================
 export const analyzeText = async (description: string): Promise<AnalysisResult> => {
-  const prompt = `${ANALYSIS_PROMPT}\n\nThe user described their meal as: "${description}"\n\nAnalyze this text description instead of a photo. Estimate portions based on typical serving sizes.`;
+  const basePrompt = await getAnalysisPrompt();
+  const prompt = `${basePrompt}\n\nThe user described their meal as: "${description}"\n\nAnalyze this text description instead of a photo. Estimate portions based on typical serving sizes.`;
 
   // Try Gemini first (any model works since it's text-only)
   let text = await callGemini(

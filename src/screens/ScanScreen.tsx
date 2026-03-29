@@ -16,6 +16,7 @@ import AnalysisOverlay from '../components/AnalysisOverlay';
 import { analyzeFood, reanalyzeItem, analyzeText } from '../services/foodAnalyzer';
 import { lookupBarcode } from '../services/barcodeService';
 import { saveMeal, addFavorite, getFavorites, useFavorite } from '../services/mealStorage';
+import { saveFeedback } from '../services/mealPlanStorage';
 import { savePhoto } from '../services/photoStorage';
 import { AnalysisResult } from '../types/nutrition';
 
@@ -145,6 +146,7 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleRemoveItem = (index: number) => {
     if (!result) return;
+    const removedItem = result.items[index];
     const newItems = result.items.filter((_, i) => i !== index);
     if (newItems.length === 0) {
       Alert.alert('No Items', 'You removed all items. Retake the photo or add items back.', [
@@ -163,6 +165,34 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
     };
     setResult({ ...result, items: newItems, totals: newTotals });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Ask for optional feedback to improve future scans
+    setTimeout(() => {
+      Alert.alert(
+        'Help improve scans',
+        `Why did you remove "${removedItem.name}"?`,
+        [
+          { text: "Wasn't in the photo", onPress: () => saveFeedback(removedItem.name, `"${removedItem.name}" was incorrectly detected — it was not in the photo`) },
+          { text: 'Wrong portion/calories', onPress: () => saveFeedback(removedItem.name, `"${removedItem.name}" had wrong portion size or calorie count`) },
+          {
+            text: 'Other...',
+            onPress: () => {
+              Alert.prompt(
+                'What was wrong?',
+                `Tell us about "${removedItem.name}"`,
+                (text) => {
+                  if (text?.trim()) saveFeedback(removedItem.name, `User said about "${removedItem.name}": ${text.trim()}`);
+                },
+                'plain-text',
+                '',
+                'default'
+              );
+            },
+          },
+          { text: 'Skip', style: 'cancel' },
+        ]
+      );
+    }, 300);
   };
 
   const handleChangeMealType = (mealType: string) => {
@@ -172,7 +202,25 @@ const ScanScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleEditItem = async (index: number, newName: string, portion: string) => {
     if (!result) return;
+    const originalName = result.items[index].name;
     const updatedItem = await reanalyzeItem(newName, portion);
+    // Save feedback if user changed the name — AI got it wrong
+    if (originalName.toLowerCase() !== newName.toLowerCase()) {
+      saveFeedback(originalName, `User corrected "${originalName}" to "${newName}" — recognize this food correctly next time`);
+      // Offer custom note
+      setTimeout(() => {
+        Alert.prompt(
+          'Anything else to note?',
+          `You changed "${originalName}" to "${newName}". Any extra detail for future scans? (optional)`,
+          (text) => {
+            if (text?.trim()) saveFeedback(newName, `User note about "${newName}": ${text.trim()}`);
+          },
+          'plain-text',
+          '',
+          'default'
+        );
+      }, 500);
+    }
     const newItems = [...result.items];
     newItems[index] = updatedItem;
     const newTotals = {
